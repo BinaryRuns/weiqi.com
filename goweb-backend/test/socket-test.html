@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weiqi Socket Test</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Weiqi Socket Test</h1>
+    <div id="status">Not Connected</div>
+    <div id="error"></div>
+    <div id="event-log" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px;">
+        <h3>Event Log:</h3>
+        <ul id="event-list"></ul>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:5000', {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 5
+        });
+
+        // Helper function to log events to the event log
+        function logEvent(eventName, data) {
+            const eventList = document.getElementById('event-list');
+            const newEvent = document.createElement('li');
+            newEvent.textContent = `[${new Date().toLocaleTimeString()}] ${eventName}: ${JSON.stringify(data)}`;
+            eventList.appendChild(newEvent);
+        }
+
+        // Connection event
+        socket.on('connect', () => {
+            document.getElementById('status').textContent = `Connected: ${socket.id}`;
+            logEvent('Connected', { socketId: socket.id });
+        });
+
+        // Connection error
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            document.getElementById('error').textContent = `Connection error: ${error.message}`;
+            logEvent('Connection Error', error.message);
+        });
+
+        // Disconnection event
+        socket.on('disconnect', (reason) => {
+            document.getElementById('status').textContent = `Disconnected: ${reason}`;
+            logEvent('Disconnected', reason);
+        });
+
+        // Listen for gameController-specific events
+        socket.on('moveMade', (data) => {
+            console.log('Move received:', data);
+            logEvent('Move Made', data);
+        });
+
+        socket.on('gameJoined', (data) => {
+            console.log('Game joined:', data);
+            logEvent('Game Joined', data);
+        });
+
+        // Emit events for testing
+        function joinGame(gameId) {
+            socket.emit('joinGame', gameId);
+            console.log('Attempting to join game:', gameId);
+            logEvent('joinGame Emitted', { gameId });
+        }
+
+        function makeMove(gameId) {
+            const moveData = {
+                gameId: gameId,
+                position: { x: Math.floor(Math.random() * 19), y: Math.floor(Math.random() * 19) },
+                player: 'black'
+            };
+            socket.emit('makeMove', moveData);
+            console.log('Attempting to make move:', moveData);
+            logEvent('makeMove Emitted', moveData);
+        }
+    </script>
+
+    <button onclick="joinGame('test-game-id')">Join Game</button>
+    <button onclick="makeMove('test-game-id')">Make Move</button>
+</body>
+</html>
