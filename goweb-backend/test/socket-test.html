@@ -20,7 +20,6 @@
             reconnectionAttempts: 5
         });
 
-        // Helper function to log events to the event log
         function logEvent(eventName, data) {
             const eventList = document.getElementById('event-list');
             const newEvent = document.createElement('li');
@@ -28,26 +27,22 @@
             eventList.appendChild(newEvent);
         }
 
-        // Connection event
         socket.on('connect', () => {
             document.getElementById('status').textContent = `Connected: ${socket.id}`;
             logEvent('Connected', { socketId: socket.id });
         });
 
-        // Connection error
         socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
             document.getElementById('error').textContent = `Connection error: ${error.message}`;
             logEvent('Connection Error', error.message);
         });
 
-        // Disconnection event
         socket.on('disconnect', (reason) => {
             document.getElementById('status').textContent = `Disconnected: ${reason}`;
             logEvent('Disconnected', reason);
         });
 
-        // Listen for gameController-specific events
         socket.on('moveMade', (data) => {
             console.log('Move received:', data);
             logEvent('Move Made', data);
@@ -58,7 +53,6 @@
             logEvent('Game Joined', data);
         });
 
-        // Emit events for testing
         function joinGame(gameId) {
             socket.emit('joinGame', gameId);
             console.log('Attempting to join game:', gameId);
