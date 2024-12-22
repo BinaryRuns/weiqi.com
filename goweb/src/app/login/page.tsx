@@ -9,7 +9,7 @@ import { FaLock } from "react-icons/fa";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black">
+    <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-md p-8 rounded-lg shadow-md bg-[#1e1e1e] text-white">
         <h1 className="text-2xl font-bold text-center mb-6">Log In</h1>
         <form className="flex flex-col gap-4">
