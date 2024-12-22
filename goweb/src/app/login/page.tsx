@@ -65,21 +65,21 @@ export default function LoginPage() {
             size="lg"
             startContent={<FaApple size={25} />}
           >
-            Log in with Apple
+            Continue with Apple
           </Button>
           <Button
             className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
             size="lg"
             startContent={<FcGoogle size={25} />}
           >
-            Log in with Google
+            Continue with Google
           </Button>
           <Button
             className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
             size="lg"
             startContent={<FaFacebook size={25} />}
           >
-            Log in with Facebook
+            Continue with Facebook
           </Button>
         </div>
 

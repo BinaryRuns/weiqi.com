@@ -30,7 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Provider>
-          <main className="p-4 mx-auto container">{children}</main>
+          <main className="mx-auto ">{children}</main>
         </Provider>
       </body>
     </html>
