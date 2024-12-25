@@ -9,7 +9,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+		net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration.class
+})
 public class GowebSpringApplication {
 
 	public static void main(String[] args) {
@@ -21,10 +23,6 @@ public class GowebSpringApplication {
 
 @GrpcService
 class HelloWorldService extends SimpleGrpc.SimpleImplBase  {
-
-
-
-
 	@Override
 	public void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver) {
 		HelloReply reply = HelloReply.newBuilder().setMessage("hello" + request.getName()).build();
