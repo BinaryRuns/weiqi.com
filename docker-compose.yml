@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Service
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: compose-postgres
+      POSTGRES_PASSWORD: compose-postgres
+      POSTGRES_DB: compose-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis Service
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+
+  # Optional: pgAdmin (PostgreSQL Management UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8082:80"
+    depends_on:
+      - postgres
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./goweb
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  # Backend Service
+  backend:
+    build:
+      context: ./goweb-spring
+      dockerfile: Dockerfile
+    container_name: backend
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/compose-postgres
+      SPRING_DATASOURCE_USERNAME: compose-postgres
+      SPRING_DATASOURCE_PASSWORD: compose-postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8081:8080"
+
+volumes:
+  postgres_data:
+    driver: local
