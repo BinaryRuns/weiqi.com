@@ -1,19 +1,18 @@
-"use client"
+"use client";
 
-import withAuth from "@/components/WithAuth"
-import {fetchWithAuth} from "../../utils/api"
+import withAuth from "@/components/WithAuth";
+import { fetchWithAuth } from "../../utils/api";
 
+function Demo() {
+  const response = fetchWithAuth("/api/hello", { method: "GET" });
 
-async function Demo() {
+  console.log(response);
 
-    const response = await fetchWithAuth("/api/hello", { method: "GET" })
-
-
-    return <>
-        <h1>Hello</h1>
+  return (
+    <>
+      <h1>Hello</h1>
     </>
+  );
 }
 
-
-export default withAuth(Demo)
-
+export default withAuth(Demo);

@@ -1,22 +1,52 @@
-"use client"
+"use client";
+
+/**
+ * To manage page level protection for protected pages
+ */
 
 import { useRouter } from "next/navigation";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { setAccessToken } from "@/store/authSlice";
 
 const withAuth = (WrappedComponent: React.ComponentType) => {
   return function ProtectedComponent() {
-    const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+    const accessToken = useSelector(
+      (state: RootState) => state.auth.accessToken
+    );
     const router = useRouter();
+    const dispatch = useDispatch();
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-      if (!accessToken) {
-        router.push("/login"); // Redirect to login if unauthenticated
-      }
-    }, [accessToken, router]);
+      const initializeAuth = async () => {
+        if (!accessToken) {
+          try {
+            const response = await fetch("/api/auth/refresh", {
+              method: "POST",
+            });
+            const { accessToken } = await response.json();
+            dispatch(setAccessToken(accessToken));
+          } catch (error) {
+            console.error("Failed to refresh token", error);
+            router.push("/login");
+          } finally {
+            setIsLoading(false);
+          }
+        } else {
+          setIsLoading(false);
+        }
+      };
 
-    return accessToken ? <WrappedComponent /> : null;
+      initializeAuth();
+    }, [accessToken, dispatch, router]);
+
+    if (isLoading) {
+      return <h1>Loading...</h1>;
+    } else {
+      return accessToken ? <WrappedComponent /> : null;
+    }
   };
 };
 
