@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*", // Proxy all API requests
-        destination: "http://localhost:8080/api/:path*", // Spring Boot backend
+        destination: "http://backend:8080/api/:path*", // Use Docker service name
       },
     ];
   },
