@@ -1,32 +1,15 @@
 package com.example.goweb_spring.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data // Generates getters, setters, equals, hashCode, and toString methods
+@NoArgsConstructor // Generates a no-args constructor
+@AllArgsConstructor // Generates an all-args constructor
 public class User {
     private String username;
     private String password;
-
-
-    public User() {}
-
-
-    public User(String username, String password) {
-        this.username = username;
-        this.password = password;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return this.password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
+    private String skillLevel;
+    private String email;
 }
