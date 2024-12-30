@@ -18,25 +18,20 @@ import java.util.Optional;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
     private final AuthService authService;
 
-    public AuthController(JwtUtil jwtUtil, UserRepository userRepository, AuthService authService) {
+    public AuthController(JwtUtil jwtUtil,  AuthService authService) {
         this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
         this.authService = authService;
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User user) {
-        // Dummy Authentication, need to set up database later on
-
-        if ("admin@gmail.com".equals(user.getUsername()) && "password".equals(user.getPassword())) {
-            String accessToken = jwtUtil.generateToken(user.getUsername());
-            String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
+        try {
+            TokenResponse tokens = authService.loginUser(user.getUsername(), user.getPassword());
 
             // Set Refresh Token in an HttpOnly Cookie
-            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
+            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokens.getRefreshToken())
                     .httpOnly(true)
                     .secure(true)
                     .path("/api/auth/refresh")
@@ -45,10 +40,11 @@ public class AuthController {
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                    .body(new TokenResponse(accessToken, null));
-
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Password or Username");
+                    .body(new TokenResponse(tokens.getAccessToken(), null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
         }
     }
 
@@ -58,9 +54,9 @@ public class AuthController {
         try {
             UserEntity newUser = authService.registerUser(
                     user.getUsername(),
+                    user.getEmail(),
                     user.getPassword(),
-                    user.getSkillLevel(),
-                    user.getEmail()
+                    user.getSkillLevel()
             );
 
             return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully: " + newUser.getUsername());
