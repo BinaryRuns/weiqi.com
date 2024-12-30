@@ -2,6 +2,9 @@ package com.example.goweb_spring.controllers;
 
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.dto.User;
+import com.example.goweb_spring.entities.UserEntity;
+import com.example.goweb_spring.repositories.UserRepository;
+import com.example.goweb_spring.services.AuthService;
 import com.example.goweb_spring.utils.JwtUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -9,13 +12,19 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
+    private final AuthService authService;
 
-    public AuthController(JwtUtil jwtUtil) {
+    public AuthController(JwtUtil jwtUtil, UserRepository userRepository, AuthService authService) {
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
+        this.authService = authService;
     }
 
     @PostMapping("/login")
@@ -42,6 +51,26 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Password or Username");
         }
     }
+
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody User user) {
+        try {
+            UserEntity newUser = authService.registerUser(
+                    user.getUsername(),
+                    user.getPassword(),
+                    user.getSkillLevel(),
+                    user.getEmail()
+            );
+
+            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully: " + newUser.getUsername());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+        }
+    }
+
 
 
     @PostMapping("/refresh")

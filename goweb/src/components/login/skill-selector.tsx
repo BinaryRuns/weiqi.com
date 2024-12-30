@@ -1,6 +1,6 @@
-import React from 'react';
+import React from "react";
 import { Button } from "@nextui-org/button";
-import { Check } from 'lucide-react';
+import { Check } from "lucide-react";
 
 interface SkillSelectorProps {
   step: number;
@@ -10,15 +10,15 @@ interface SkillSelectorProps {
   handleBack: () => void;
 }
 
-const SkillSelector: React.FC<SkillSelectorProps> = ({ 
-  step, 
-  skillLevel, 
-  setSkillLevel, 
-  handleNext, 
-  handleBack 
+const SkillSelector: React.FC<SkillSelectorProps> = ({
+  step,
+  skillLevel,
+  setSkillLevel,
+  handleNext,
+  handleBack,
 }) => {
-  const skillLevels = ['beginner', 'intermediate', 'advanced'] as const;
-  
+  const skillLevels = ["beginner", "intermediate", "advanced"] as const;
+
   return step === 2 ? (
     <div className="flex flex-col gap-4">
       {skillLevels.map((level) => (
@@ -26,17 +26,15 @@ const SkillSelector: React.FC<SkillSelectorProps> = ({
           key={level}
           size="lg"
           className={`w-full text-white border relative ${
-            skillLevel === level 
-              ? 'border-blue-600 bg-black' 
-              : 'border-gray-600 bg-gray-800 hover:bg-gray-800'
+            skillLevel === level
+              ? "border-blue-600 bg-black"
+              : "border-gray-600 bg-gray-800 hover:bg-gray-800"
           }`}
           onPress={() => setSkillLevel(level)}
         >
           <div className="flex items-center justify-between w-full">
             <span className="capitalize">{level}</span>
-            {skillLevel === level && (
-              <Check className="w-5 h-5" />
-            )}
+            {skillLevel === level && <Check className="w-5 h-5" />}
           </div>
         </Button>
       ))}
@@ -49,7 +47,7 @@ const SkillSelector: React.FC<SkillSelectorProps> = ({
       >
         Next
       </Button>
-      
+
       <Button
         className="w-full bg-gray-600 text-white hover:bg-gray-700"
         size="lg"
