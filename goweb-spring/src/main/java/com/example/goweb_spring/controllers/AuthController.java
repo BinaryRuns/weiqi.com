@@ -1,7 +1,7 @@
 package com.example.goweb_spring.controllers;
 
 import com.example.goweb_spring.dto.TokenResponse;
-import com.example.goweb_spring.entities.User;
+import com.example.goweb_spring.dto.User;
 import com.example.goweb_spring.utils.JwtUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
