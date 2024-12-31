@@ -1,7 +1,6 @@
 package com.example.goweb_spring.services;
 
 import com.example.goweb_spring.dto.TokenResponse;
-import com.example.goweb_spring.dto.User;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.repositories.UserRepository;
 import com.example.goweb_spring.utils.JwtUtil;

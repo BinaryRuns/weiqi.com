@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>WebSocket Test</title>
+  </head>
+  <body>
+    <h1>WebSocket Test</h1>
+    <script>
+      const socket = new WebSocket("ws://localhost:8081/ws/game");
+
+      socket.onopen = () => {
+        console.log("WebSocket connection opened");
+        socket.send("Hello from standalone test");
+      };
+
+      socket.onmessage = (event) => {
+        console.log("Message received:", event.data);
+      };
+
+      socket.onclose = (event) => {
+        console.log(
+          `WebSocket closed: code=${event.code}, reason=${event.reason}`
+        );
+      };
+
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+    </script>
+  </body>
+</html>
