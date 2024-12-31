@@ -1,3 +1,48 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 10%;      /* #1A1A1A - Main background, slightly lighter than sidebar */
+    --foreground: 0 0% 92%;      /* #EAEAEA */
+    
+    --sidebar: 0 0% 7%;          /* #121212 - Darkest, for sidebar */
+    
+    --card: 0 0% 13%;           /* #212121 - Slightly lighter than background for cards */
+    --card-foreground: 0 0% 92%;
+    
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 92%;
+    
+    --primary: 25 30% 55%;       /* #B08968 */
+    --primary-foreground: 0 0% 92%;
+    
+    --secondary: 25 26% 50%;     /* #A1795E */
+    --secondary-foreground: 0 0% 92%;
+    
+    --muted: 0 0% 15%;          /* #262626 */
+    --muted-foreground: 0 0% 65%;
+    
+    --accent: 25 30% 55%;       /* #B08968 */
+    --accent-foreground: 0 0% 92%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 12%;         /* #1F1F1F */
+    --input: 0 0% 12%;
+    --ring: 25 30% 55%;
+    
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
