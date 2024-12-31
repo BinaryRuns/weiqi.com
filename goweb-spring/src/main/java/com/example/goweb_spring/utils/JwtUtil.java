@@ -19,24 +19,42 @@ public class JwtUtil {
     private final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 
-    public String generateToken(String username) {
+    public String generateToken(long userId, String username) {
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(String.valueOf(userId)) // userId as subject
+                .claim("username", username) // Additional claims
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(long userId, String username) {
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(String.valueOf(userId))
+                .claim("username", username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    public long extractUserId(String token) {
+        try {
+            // Parse the token and extract the "sub" claim as the user ID
+            String userIdString = Jwts.parserBuilder()
+                    .setSigningKey(SECRET_KEY) // Use your secret key
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject(); // Get the "sub" (subject) claim
+
+            // Convert the extracted user ID from String to long
+            return Long.parseLong(userIdString);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid or Malformed Token", e);
+        }
+    }
 
     public String extractUsername(String token) {
         return Jwts.parserBuilder()

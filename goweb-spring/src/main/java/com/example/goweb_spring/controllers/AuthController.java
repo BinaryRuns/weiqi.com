@@ -3,7 +3,6 @@ package com.example.goweb_spring.controllers;
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.dto.User;
 import com.example.goweb_spring.entities.UserEntity;
-import com.example.goweb_spring.repositories.UserRepository;
 import com.example.goweb_spring.services.AuthService;
 import com.example.goweb_spring.utils.JwtUtil;
 import org.springframework.http.HttpHeaders;
@@ -67,29 +66,43 @@ public class AuthController {
         }
     }
 
-
-
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        try {
+            TokenResponse tokenResponse = authService.refreshToken(refreshToken);
 
-        if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or Expired Refresh Token");
+            // Set the new refresh token in an HTTP-only cookie
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
+                    .httpOnly(true)
+                    .secure(true)
+                    .path("/api/auth/refresh")
+                    .maxAge(7 * 24 * 60 * 60) // 7 days
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(new TokenResponse(tokenResponse.getAccessToken(), null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
         }
+    }
 
-        String username = jwtUtil.extractUsername(refreshToken);
-        String newAccessToken = jwtUtil.generateToken(username);
-        String newRefreshToken = jwtUtil.generateRefreshToken(username);
 
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", newRefreshToken)
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(true)
                 .path("/api/auth/refresh")
-                .maxAge(7 * 24 * 60 * 60) // 7 days
+                .maxAge(0) // Remove the cookie immediately
                 .build();
 
-
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(new TokenResponse(newAccessToken, null));
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body("Logged out successfully");
     }
+
 }

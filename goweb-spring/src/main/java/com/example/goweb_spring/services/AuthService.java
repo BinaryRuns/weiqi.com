@@ -50,9 +50,30 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid password");
         }
 
-        String accessToken = jwtUtil.generateToken(username);
-        String refreshToken = jwtUtil.generateRefreshToken(username);
+        String accessToken = jwtUtil.generateToken(user.getId(), user.getUsername());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(),username);
 
         return new TokenResponse(accessToken, refreshToken);
+    }
+
+    public TokenResponse refreshToken(String refreshToken) {
+        // Validate the refresh token
+        if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("Invalid or Expired Refresh Token");
+        }
+
+        // Extract user ID and username from the refresh token
+        long userId = jwtUtil.extractUserId(refreshToken);
+        String username = jwtUtil.extractUsername(refreshToken);
+
+        // Verify user exists in the database
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // Generate new access and refresh tokens
+        String newAccessToken = jwtUtil.generateToken(user.getId(), user.getUsername());
+        String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername());
+
+        return new TokenResponse(newAccessToken, newRefreshToken);
     }
 }
