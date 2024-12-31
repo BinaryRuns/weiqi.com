@@ -14,6 +14,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 
   # Redis Service
   redis:
@@ -23,6 +25,8 @@ services:
     ports:
       - "6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - app-network
 
   # Optional: pgAdmin (PostgreSQL Management UI)
   pgadmin:
@@ -36,6 +40,8 @@ services:
       - "8082:80"
     depends_on:
       - postgres
+    networks:
+      - app-network
 
   # Frontend Service
   frontend:
@@ -51,6 +57,8 @@ services:
     volumes:
       - ./goweb:/app
       - /app/node_modules
+    networks:
+      - app-network
 
   # Backend Service
   backend:
@@ -71,7 +79,26 @@ services:
     depends_on:
       - postgres
       - redis
+    networks:
+      - app-network
+
+  # WebSocket Test Service
+  websocket-test:
+    build:
+      context: ./websocket-test # Path to the directory with Dockerfile and index.html
+    container_name: websocket-test
+    restart: always
+    ports:
+      - "8083:8083" # Map the test container's port to 8083 on the host
+    depends_on:
+      - backend
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
     driver: local
+
+networks:
+  app-network:
+    driver: bridge

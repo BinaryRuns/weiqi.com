@@ -19,6 +19,7 @@ public class SecurityConfig {
     }
 
 
+
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -30,6 +31,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // Disable CSRF for APIs
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // Allow public access to auth endpoints
+                        .requestMatchers("/ws/**").permitAll() // Allow all websocket endpoints
+
                         .anyRequest().authenticated() // Secure all other endpoints
                 )
                 .addFilterBefore(jwtAuthenticationFilter,  UsernamePasswordAuthenticationFilter.class) // Add JWT filter

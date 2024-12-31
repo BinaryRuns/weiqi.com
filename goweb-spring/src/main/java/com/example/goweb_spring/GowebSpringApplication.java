@@ -7,8 +7,9 @@ import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
-
+@EnableScheduling
 @SpringBootApplication(exclude = {
 		net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration.class
 })
