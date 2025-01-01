@@ -1,6 +1,6 @@
 "use client";
 
-import withAuth from "@/components/WithAuth";
+import withAuth from "@/auth/WithAuth";
 import { fetchWithAuth } from "../../utils/api";
 
 function Demo() {
