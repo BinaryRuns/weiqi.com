@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,9 +9,21 @@ export default function PlayPage() {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
 
   const modes = [
-    { label: "Play Bots", description: "Play against AI bots of various difficulties", action: () => setSelectedMode("bots") },
-    { label: "Play Online", description: "Challenge players online", action: () => setSelectedMode("online") },
-    { label: "Play with Friend", description: "Play with a friend by inviting them", action: () => setSelectedMode("friend") }
+    {
+      label: "Play Bots",
+      description: "Play against AI bots of various difficulties",
+      action: () => setSelectedMode("bots"),
+    },
+    {
+      label: "Play Online",
+      description: "Challenge players online",
+      action: () => setSelectedMode("online"),
+    },
+    {
+      label: "Play with Friend",
+      description: "Play with a friend by inviting them",
+      action: () => setSelectedMode("friend"),
+    },
   ];
 
   return (
@@ -38,8 +50,12 @@ export default function PlayPage() {
 
       <div className="mt-6">
         {selectedMode && (
-          <Button onClick={() => alert(`Starting ${selectedMode} mode`)} className="w-full">
-            Start {selectedMode.charAt(0).toUpperCase() + selectedMode.slice(1)} Game
+          <Button
+            onClick={() => alert(`Starting ${selectedMode} mode`)}
+            className="w-full"
+          >
+            Start {selectedMode.charAt(0).toUpperCase() + selectedMode.slice(1)}{" "}
+            Game
           </Button>
         )}
       </div>

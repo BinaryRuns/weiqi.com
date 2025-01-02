@@ -1,29 +1,24 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { RootLayout } from '@/components/layout/root-layout';
+import "./globals.css";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { RootLayout } from "@/components/layout/root-layout";
 
-import AuthProvider from '@/auth/AuthProvider';
+import AuthProvider from "@/auth/AuthProvider";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'GoMaster - Play Go/Weiqi Online',
-  description: 'Play Go/Weiqi online, solve puzzles, learn strategies, and join a global community of players.',
+  title: "GoMaster - Play Go/Weiqi Online",
+  description:
+    "Play Go/Weiqi online, solve puzzles, learn strategies, and join a global community of players.",
 };
 
-export default function Layout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <AuthProvider>
-        <RootLayout>
-          {children}
-        </RootLayout>
+          <RootLayout>{children}</RootLayout>
         </AuthProvider>
       </body>
     </html>

@@ -1,24 +1,28 @@
 package com.example.goweb_spring.configs;
 
-import com.example.goweb_spring.websocket.GameSocketHandler;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.*;
 
 @Configuration
-@EnableWebSocket
-public class WebSocketConfig implements WebSocketConfigurer {
-    private final GameSocketHandler gameSocketHandler;
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    public WebSocketConfig(GameSocketHandler gameSocketHandler) {
-        this.gameSocketHandler = gameSocketHandler;
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry registry) {
+        // Prefix for messages bound for @MessageMapping methods
+        registry.setApplicationDestinationPrefixes("/app");
+        // Enable a simple in-memory broker with destination prefixes /topic and /queue
+        registry.enableSimpleBroker("/topic", "/queue");
+        // Set user destination prefix for user-specific messaging
+        registry.setUserDestinationPrefix("/user");
     }
 
     @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(gameSocketHandler, "/ws/game")
-                .setAllowedOrigins("*"); // Allow all origins temporarily
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Register the WebSocket endpoint with SockJS fallback and allowed origins
+        registry.addEndpoint("/ws/game")
+                .setAllowedOriginPatterns("*") // Restrict in production
+                .withSockJS();
     }
 }
-
