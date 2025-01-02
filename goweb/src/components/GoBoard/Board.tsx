@@ -12,6 +12,44 @@ export const Board: React.FC<BoardProps> = ({
     onIntersectionClick?.({ x, y });
   };
 
+  const getGridStyle = () => {
+    switch (size) {
+      case 9:
+        return {
+          width: '80%',
+          height: '80%',
+          top: '10%',
+          left: '10%'
+        };
+      case 13:
+        return {
+          width: '85%',
+          height: '85%',
+          top: '7.5%',
+          left: '7.5%'
+        };
+      default:
+        return {
+          width: '90%',
+          height: '90%',
+          top: '5%',
+          left: '5%'
+        };
+    }
+  };
+
+  // Get intersection size based on board size
+  const getIntersectionSize = () => {
+    switch (size) {
+      case 9:
+        return '7.5%'; 
+      case 13:
+        return '6%'; 
+      default:
+        return '5%'; 
+    }
+  };
+
   const renderGrid = () => {
     const gridLines = [];
     for (let i = 0; i < size; i++) {
@@ -32,7 +70,7 @@ export const Board: React.FC<BoardProps> = ({
       gridLines.push(
         <div
           key={`v${i}`}
-          className="absolute bg-black/30"
+          className="absolute bg-black/35"
           style={{
             top: '0',
             bottom: '0',
@@ -59,7 +97,7 @@ export const Board: React.FC<BoardProps> = ({
             top: `${(y * 100) / (size - 1)}%`,
           }}
         >
-          <div className="absolute inset-0 bg-black/50 rounded-full" />
+          <div className="absolute inset-0 bg-black/80 rounded-full" />
         </div>
       );
     }
@@ -68,6 +106,8 @@ export const Board: React.FC<BoardProps> = ({
 
   const renderStones = () => {
     const stoneElements = [];
+    const intersectionSize = getIntersectionSize();
+    
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const isLastMove = lastMove?.x === x && lastMove?.y === y;
@@ -76,14 +116,18 @@ export const Board: React.FC<BoardProps> = ({
             key={`intersection-${x}-${y}`}
             className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
             style={{
-              width: '5%',
-              height: '5%',
+              width: intersectionSize,
+              height: intersectionSize,
               left: `${(x * 100) / (size - 1)}%`,
               top: `${(y * 100) / (size - 1)}%`,
             }}
             onClick={() => handleClick(x, y)}
           >
-            <Stone color={stones[y][x]} isLastMove={isLastMove} />
+            <Stone 
+              color={stones[y][x]} 
+              isLastMove={isLastMove} 
+              boardSize={size}
+            />
           </div>
         );
       }
@@ -91,9 +135,19 @@ export const Board: React.FC<BoardProps> = ({
     return stoneElements;
   };
 
+  const gridStyle = getGridStyle();
+
   return (
     <div className="relative w-full aspect-square bg-[#E6BC6A] rounded-lg shadow-xl">
-      <div className="absolute inset-[5%]">
+      <div 
+        className="absolute"
+        style={{
+          width: gridStyle.width,
+          height: gridStyle.height,
+          top: gridStyle.top,
+          left: gridStyle.left
+        }}
+      >
         {renderGrid()}
         {renderStarPoints()}
         {renderStones()}

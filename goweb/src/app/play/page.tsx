@@ -1,83 +1,48 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Board } from '@/components/GoBoard/Board';
-import { BoardSize, Position, StoneColor } from '@/components/GoBoard/types';
+import { useState } from 'react';
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-function App() {
-  const [boardSize, setBoardSize] = useState<BoardSize>(19);
-  const [stones, setStones] = useState<StoneColor[][]>(
-    Array(boardSize).fill(null).map(() => Array(boardSize).fill(null))
-  );
-  const [currentPlayer, setCurrentPlayer] = useState<StoneColor>('black');
-  const [lastMove, setLastMove] = useState<Position | null>(null);
+export default function PlayPage() {
+  const [selectedMode, setSelectedMode] = useState<string | null>(null);
 
-  const handleIntersectionClick = (position: Position) => {
-    if (stones[position.y][position.x]) return;
-
-    const newStones = stones.map(row => [...row]);
-    newStones[position.y][position.x] = currentPlayer;
-    setStones(newStones);
-    setCurrentPlayer(currentPlayer === 'black' ? 'white' : 'black');
-    setLastMove(position);
-  };
-
-  const handleSizeChange = (newSize: BoardSize) => {
-    setBoardSize(newSize);
-    setStones(Array(newSize).fill(null).map(() => Array(newSize).fill(null)));
-    setLastMove(null);
-    setCurrentPlayer('black');
-  };
+  const modes = [
+    { label: "Play Bots", description: "Play against AI bots of various difficulties", action: () => setSelectedMode("bots") },
+    { label: "Play Online", description: "Challenge players online", action: () => setSelectedMode("online") },
+    { label: "Play with Friend", description: "Play with a friend by inviting them", action: () => setSelectedMode("friend") }
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h1 className="text-3xl mb-4">Go Board</h1>
-          <div className="flex gap-4 mb-6">
-            <button
-              onClick={() => handleSizeChange(19)}
-              className={`px-4 py-2 rounded ${
-                boardSize === 19 ? 'bg-blue-500 text-white' : 'bg-gray-200'
-              }`}
-            >
-              19x19
-            </button>
-            <button
-              onClick={() => handleSizeChange(13)}
-              className={`px-4 py-2 rounded ${
-                boardSize === 13 ? 'bg-blue-500 text-white' : 'bg-gray-200'
-              }`}
-            >
-              13x13
-            </button>
-            <button
-              onClick={() => handleSizeChange(9)}
-              className={`px-4 py-2 rounded ${
-                boardSize === 9 ? 'bg-blue-500 text-white' : 'bg-gray-200'
-              }`}
-            >
-              9x9
-            </button>
-          </div>
-          <div className="mb-4">
-            <p className="text-lg">
-              Current Player:{' '}
-              <span className="capitalize">{currentPlayer}</span>
-            </p>
-          </div>
-          <div className="aspect-square max-w-2xl mx-auto">
-            <Board
-              size={boardSize}
-              stones={stones}
-              onIntersectionClick={handleIntersectionClick}
-              lastMove={lastMove}
-            />
-          </div>
-        </div>
+    <div className="p-6 max-w-xl mx-auto space-y-8">
+      <h1 className="text-3xl font-bold text-center">Choose Your Game Mode</h1>
+
+      <div className="grid gap-4">
+        {modes.map(({ label, description, action }) => (
+          <Card
+            key={label}
+            className={cn(
+              "p-6 cursor-pointer transition-colors border rounded-lg",
+              selectedMode === label && "border-primary bg-primary/10"
+            )}
+            onClick={action}
+          >
+            <div className="flex flex-col items-center">
+              <div className="text-xl font-semibold">{label}</div>
+              <p className="text-sm text-muted-foreground">{description}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="mt-6">
+        {selectedMode && (
+          <Button onClick={() => alert(`Starting ${selectedMode} mode`)} className="w-full">
+            Start {selectedMode.charAt(0).toUpperCase() + selectedMode.slice(1)} Game
+          </Button>
+        )}
       </div>
     </div>
   );
 }
-
-export default App;
