@@ -20,7 +20,13 @@ interface BoardSelectorProps {
 
 export function BoardSelector({ selectedSize, onSelectSize, onStartGame }: BoardSelectorProps) {
   return (
-    <div className="grid md:grid-cols-[1fr_auto] gap-8 items-start">
+    <div className="grid lg:grid-cols-[1fr_2fr] gap-8 items-start">
+      {/* Board Preview */}
+      <div className="aspect-square mx-auto">
+        <PreviewBoard size={selectedSize} className="w-[400px]" />
+      </div>
+
+      {/* Game Options */}
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold mb-2">Choose Board Size</h1>
@@ -53,10 +59,6 @@ export function BoardSelector({ selectedSize, onSelectSize, onStartGame }: Board
         <Button onClick={onStartGame} className="w-full">
           Start Game
         </Button>
-      </div>
-
-      <div className="hidden md:block sticky top-8">
-        <PreviewBoard size={selectedSize} className="w-[400px]" />
       </div>
     </div>
   );
