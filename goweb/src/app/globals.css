@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    --background: 0 0% 10%;      /* #1A1A1A - Main background, slightly lighter than sidebar */
+    --background: 0 0% 17%;      
     --foreground: 0 0% 92%;      /* #EAEAEA */
     
-    --sidebar: 0 0% 7%;          /* #121212 - Darkest, for sidebar */
-    
+    --sidebar: 0 0% 10%;          /* #1A1A1A - Darkest, for sidebar */
+    --bigcard: 0 0% 14%;         /* #1A1A1A - same as sidebar */
     --card: 0 0% 13%;           /* #212121 - Slightly lighter than background for cards */
     --card-foreground: 0 0% 92%;
     
