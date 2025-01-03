@@ -24,7 +24,7 @@ const navItems = [
 
 export function Sidebar({ className = '' }: { className?: string }) {
   return (
-    <div className={`w-64 bg-background border-r border-border px-4 py-6 flex flex-col ${className}`}>
+    <div className={`w-64 bg-sidebar border-r border-border px-4 py-6 flex flex-col ${className}`}>
       <Logo />
       
       <nav className="space-y-1 mt-8 flex-1">

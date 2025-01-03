@@ -3,10 +3,10 @@ import { BoardProps, Position } from './types';
 import { Stone } from './Stone';
 
 export const Board: React.FC<BoardProps> = ({
-  size,
-  stones,
-  onIntersectionClick,
-  lastMove,
+  size = 19,         
+  stones = [],       
+  onIntersectionClick = () => {},  
+  lastMove = null,   
 }) => {
   const handleClick = (x: number, y: number) => {
     onIntersectionClick?.({ x, y });
@@ -19,41 +19,51 @@ export const Board: React.FC<BoardProps> = ({
           width: '80%',
           height: '80%',
           top: '10%',
-          left: '10%'
+          left: '10%',
         };
       case 13:
         return {
           width: '85%',
           height: '85%',
           top: '7.5%',
-          left: '7.5%'
+          left: '7.5%',
         };
       default:
         return {
           width: '90%',
           height: '90%',
           top: '5%',
-          left: '5%'
+          left: '5%',
         };
     }
   };
 
-  // Get intersection size based on board size
   const getIntersectionSize = () => {
     switch (size) {
       case 9:
-        return '7.5%'; 
+        return '7.5%';
       case 13:
-        return '6%'; 
+        return '6%';
       default:
-        return '5%'; 
+        return '5%';
+    }
+  };
+
+  // Get star point size based on board size
+  const getStarPointSize = () => {
+    switch (size) {
+      case 9:
+        return '1%';
+      case 13:
+        return '1%';
+      default:
+        return '1%';
     }
   };
 
   const renderGrid = () => {
     const gridLines = [];
     for (let i = 0; i < size; i++) {
-      // Horizontal lines
       gridLines.push(
         <div
           key={`h${i}`}
@@ -66,7 +76,6 @@ export const Board: React.FC<BoardProps> = ({
           }}
         />
       );
-      // Vertical lines
       gridLines.push(
         <div
           key={`v${i}`}
@@ -86,13 +95,16 @@ export const Board: React.FC<BoardProps> = ({
   const renderStarPoints = () => {
     const starPoints = [];
     const starPointPositions = getStarPointPositions(size);
+    const starPointSize = getStarPointSize();
 
     for (const [x, y] of starPointPositions) {
       starPoints.push(
         <div
           key={`star-${x}-${y}`}
-          className="absolute -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5"
+          className="absolute -translate-x-1/2 -translate-y-1/2"
           style={{
+            width: starPointSize,
+            height: starPointSize,
             left: `${(x * 100) / (size - 1)}%`,
             top: `${(y * 100) / (size - 1)}%`,
           }}
@@ -105,9 +117,11 @@ export const Board: React.FC<BoardProps> = ({
   };
 
   const renderStones = () => {
+    if (!stones || stones.length === 0 || !onIntersectionClick) return null;
+
     const stoneElements = [];
     const intersectionSize = getIntersectionSize();
-    
+
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const isLastMove = lastMove?.x === x && lastMove?.y === y;
@@ -124,7 +138,7 @@ export const Board: React.FC<BoardProps> = ({
             onClick={() => handleClick(x, y)}
           >
             <Stone 
-              color={stones[y][x]} 
+              color={stones[y]?.[x]}
               isLastMove={isLastMove} 
               boardSize={size}
             />
@@ -145,7 +159,7 @@ export const Board: React.FC<BoardProps> = ({
           width: gridStyle.width,
           height: gridStyle.height,
           top: gridStyle.top,
-          left: gridStyle.left
+          left: gridStyle.left,
         }}
       >
         {renderGrid()}
@@ -178,7 +192,6 @@ function getStarPointPositions(size: number): [number, number][] {
       [9, 9],
     ];
   } else {
-    // 9x9
     return [
       [2, 2],
       [2, 6],
