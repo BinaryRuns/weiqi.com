@@ -3,6 +3,7 @@ package com.example.goweb_spring.controllers;
 import com.example.goweb_spring.model.ChatMessage;
 import com.example.goweb_spring.model.GameRoom;
 import com.example.goweb_spring.model.JoinRoomMessage;
+import com.example.goweb_spring.model.MoveMessage;
 import com.example.goweb_spring.services.GameRoomService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -42,7 +43,7 @@ public class GameController {
     }
 
     @MessageMapping("/game.leave")
-    public void leaveRoom(@Payload JoinRoomMessage leaveRoomMessage, @DestinationVariable("roomId") String roomId) {
+    public void leaveRoom(@Payload JoinRoomMessage leaveRoomMessage) {
         try {
              gameRoomService.leaveRoom(leaveRoomMessage.getRoomId(), leaveRoomMessage.getUserId());
         } catch (Exception e) {
@@ -59,5 +60,26 @@ public class GameController {
 
     public ChatMessage sendMessage(@Payload ChatMessage chatMessage,  @DestinationVariable("roomId") String roomId) {
         return chatMessage;
+    }
+
+
+    /**
+     * Handles message sent to /app/game.move
+     * Processes a stone placement move and broadcasts the updated game state
+     */
+    @MessageMapping("/game.move")
+    public void handleMove(@Payload MoveMessage moveMessage) {
+        try {
+            System.out.println("Received move message: " + moveMessage);
+            gameRoomService.placeStone(
+                    moveMessage.getRoomId(),
+                    moveMessage.getUserId(),
+                    moveMessage.getX(),
+                    moveMessage.getY()
+            );
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

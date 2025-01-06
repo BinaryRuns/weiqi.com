@@ -1,7 +1,12 @@
 import { useState } from "react";
-import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type BoardSize = 9 | 13 | 19;
 
@@ -20,30 +25,66 @@ interface BoardSizeOption {
 
 interface GameSetupProps {
   onBoardSizeChange: (size: BoardSize) => void;
+  onGameSetup: (config: { size: BoardSize; timeControl: string }) => void;
   initialBoardSize: BoardSize;
 }
 
-
-// TODO: Game Setup Is Here
-const GameSetup: React.FC<GameSetupProps> = ({ onBoardSizeChange, initialBoardSize }) => {
+const GameSetup: React.FC<GameSetupProps> = ({
+  onBoardSizeChange,
+  onGameSetup,
+  initialBoardSize,
+}) => {
   const [selectedSize, setSelectedSize] = useState<BoardSize>(initialBoardSize);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
   const boardSizes: BoardSizeOption[] = [
-    { label: "9×9", value: 9, description: "Quick games, perfect for beginners" },
-    { label: "13×13", value: 13, description: "Medium size, balanced gameplay" },
-    { label: "19×19", value: 19, description: "Traditional size, full strategy" }
+    {
+      label: "9×9",
+      value: 9,
+      description: "Quick games, perfect for beginners",
+    },
+    {
+      label: "13×13",
+      value: 13,
+      description: "Medium size, balanced gameplay",
+    },
+    {
+      label: "19×19",
+      value: 19,
+      description: "Traditional size, full strategy",
+    },
   ];
 
   const timeControls: TimeControl[] = [
-    { label: "Blitz", value: "blitz", time: "5 min + 10s byoyomi", description: "Fast-paced game" },
-    { label: "Standard", value: "standard", time: "10 min + 30s byoyomi", description: "Balanced time control" },
-    { label: "Classical", value: "classical", time: "30 min + 60s byoyomi", description: "Traditional timing" }
+    {
+      label: "Blitz",
+      value: "blitz",
+      time: "5 min + 10s byoyomi",
+      description: "Fast-paced game",
+    },
+    {
+      label: "Standard",
+      value: "standard",
+      time: "10 min + 30s byoyomi",
+      description: "Balanced time control",
+    },
+    {
+      label: "Classical",
+      value: "classical",
+      time: "30 min + 60s byoyomi",
+      description: "Traditional timing",
+    },
   ];
 
   const handleSizeSelect = (size: BoardSize) => {
     setSelectedSize(size);
     onBoardSizeChange(size);
+  };
+
+  const handleStartGame = () => {
+    if (selectedSize && selectedTime) {
+      onGameSetup({ size: selectedSize, timeControl: selectedTime });
+    }
   };
 
   return (
@@ -52,16 +93,18 @@ const GameSetup: React.FC<GameSetupProps> = ({ onBoardSizeChange, initialBoardSi
         <h2 className="text-xl font-semibold mb-4">Select Board Size</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {boardSizes.map((size) => (
-            <Card 
+            <Card
               key={size.value}
               className={`cursor-pointer transition-all ${
-                selectedSize === size.value ? 'ring-2 ring-primary' : ''
+                selectedSize === size.value ? "ring-2 ring-primary" : ""
               }`}
               onClick={() => handleSizeSelect(size.value)}
             >
               <CardHeader className="p-4">
                 <CardTitle className="text-lg">{size.label}</CardTitle>
-                <CardDescription className="text-sm">{size.description}</CardDescription>
+                <CardDescription className="text-sm">
+                  {size.description}
+                </CardDescription>
               </CardHeader>
             </Card>
           ))}
@@ -75,7 +118,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onBoardSizeChange, initialBoardSi
             <Card
               key={time.value}
               className={`cursor-pointer transition-all ${
-                selectedTime === time.value ? 'ring-2 ring-primary' : ''
+                selectedTime === time.value ? "ring-2 ring-primary" : ""
               }`}
               onClick={() => setSelectedTime(time.value)}
             >
@@ -93,18 +136,14 @@ const GameSetup: React.FC<GameSetupProps> = ({ onBoardSizeChange, initialBoardSi
       </div>
 
       <div className="flex justify-center mt-8">
-        <Link 
-          href={selectedTime ? `/game/${selectedSize}-${selectedTime}` : '#'}
-          className={`w-full md:w-auto ${!selectedTime && 'pointer-events-none opacity-50'}`}
+        <Button
+          size="lg"
+          className="w-full md:w-auto"
+          disabled={!selectedTime}
+          onClick={handleStartGame}
         >
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={!selectedTime}
-          >
-            Start Game
-          </Button>
-        </Link>
+          Start Game
+        </Button>
       </div>
     </div>
   );

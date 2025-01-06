@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -19,7 +20,7 @@ public class JwtUtil {
     private final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 
-    public String generateToken(long userId, String username) {
+    public String generateToken(UUID userId, String username) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId)) // userId as subject
                 .claim("username", username) // Additional claims
@@ -29,7 +30,7 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String generateRefreshToken(long userId, String username) {
+    public String generateRefreshToken(UUID userId, String username) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim("username", username)
@@ -39,7 +40,7 @@ public class JwtUtil {
                 .compact();
     }
 
-    public long extractUserId(String token) {
+    public UUID extractUserId(String token) {
         try {
             // Parse the token and extract the "sub" claim as the user ID
             String userIdString = Jwts.parserBuilder()
@@ -50,7 +51,7 @@ public class JwtUtil {
                     .getSubject(); // Get the "sub" (subject) claim
 
             // Convert the extracted user ID from String to long
-            return Long.parseLong(userIdString);
+            return UUID.fromString(userIdString);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid or Malformed Token", e);
         }

@@ -7,6 +7,8 @@ import com.example.goweb_spring.utils.JwtUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -50,8 +52,8 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid password");
         }
 
-        String accessToken = jwtUtil.generateToken(user.getId(), user.getUsername());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId(),username);
+        String accessToken = jwtUtil.generateToken(user.getUserId(), user.getUsername());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(),username);
 
         return new TokenResponse(accessToken, refreshToken);
     }
@@ -63,16 +65,16 @@ public class AuthService {
         }
 
         // Extract user ID and username from the refresh token
-        long userId = jwtUtil.extractUserId(refreshToken);
+        UUID userId = jwtUtil.extractUserId(refreshToken);
         String username = jwtUtil.extractUsername(refreshToken);
 
         // Verify user exists in the database
-        UserEntity user = userRepository.findById(userId)
+        UserEntity user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         // Generate new access and refresh tokens
-        String newAccessToken = jwtUtil.generateToken(user.getId(), user.getUsername());
-        String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername());
+        String newAccessToken = jwtUtil.generateToken(user.getUserId(), user.getUsername());
+        String newRefreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUsername());
 
         return new TokenResponse(newAccessToken, newRefreshToken);
     }
