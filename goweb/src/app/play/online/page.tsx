@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Card } from "@/components/ui/card";
 import { Board } from "@/components/GoBoard/Board";
 import PlayerCard from "@/components/play/board/playercard";
 import GameSetup from "@/components/play/board/gamesetup";
+import { useRouter } from "next/navigation";
 
 type BoardSize = 9 | 13 | 19;
 
@@ -15,11 +14,46 @@ interface GameConfig {
 }
 
 export default function PlayPage() {
+  const router = useRouter();
+
   const [boardSize, setBoardSize] = useState<BoardSize>(19);
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
 
   const handleBoardSizeChange = (size: BoardSize) => {
     setBoardSize(size);
+  };
+
+  const handleGameSetup = (config: GameConfig) => {
+    setGameConfig(config);
+    createGame(config);
+  };
+
+  const createGame = async (config: GameConfig) => {
+    try {
+      const response = await fetch("/api/game/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomName: `Game ${config.size}x${config.size}`,
+          maxPlayers: 2,
+          boardSize: config.size,
+          timeControl: config.timeControl.toUpperCase(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Game created successfully:", data);
+        // Redirect to the game page with the created game room ID
+        router.push(`/game/${data.roomId}`);
+      } else {
+        console.error("Failed to create game");
+      }
+    } catch (error) {
+      console.error("Error creating game:", error);
+    }
   };
 
   return (
@@ -41,8 +75,9 @@ export default function PlayPage() {
       <div className="w-full md:w-[500px] h-full p-6 overflow-y-auto">
         <div className="bg-bigcard p-6 rounded-lg h-full">
           <h1 className="text-3xl font-bold text-center mb-10">New Game</h1>
-          <GameSetup 
-            onBoardSizeChange={handleBoardSizeChange} 
+          <GameSetup
+            onBoardSizeChange={handleBoardSizeChange}
+            onGameSetup={handleGameSetup} // Pass handler to GameSetup
             initialBoardSize={boardSize}
           />
         </div>

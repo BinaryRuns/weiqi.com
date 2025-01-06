@@ -11,4 +11,7 @@ import lombok.NoArgsConstructor;
 public class CreateRoomRequest {
     private String roomName;
     private int maxPlayers;
+    private int boardSize;
+    private TimeControl timeControl;
 }
+

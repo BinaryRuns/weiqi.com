@@ -29,7 +29,11 @@ public class RoomController {
      */
     @PostMapping("/create")
     public ResponseEntity<GameRoom> createRoom(@RequestBody CreateRoomRequest request) {
-        GameRoom gameRoom = gameRoomService.createRoom(request.getRoomName(), request.getMaxPlayers());
+        GameRoom gameRoom = gameRoomService.createRoom(
+                request.getRoomName(),
+                request.getMaxPlayers(),
+                request.getBoardSize(),
+                request.getTimeControl());
         return ResponseEntity.ok(gameRoom);
     }
 
