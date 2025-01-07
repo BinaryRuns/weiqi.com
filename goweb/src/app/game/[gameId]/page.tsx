@@ -10,6 +10,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import Timer from "@/components/play/board/timer";
 
+// types
 type BoardSize = 9 | 13 | 19;
 
 interface GameState {
@@ -34,13 +35,16 @@ interface Player {
 }
 
 export default function GamePage() {
+  // ----- Hooks and State -----
   const params = useParams();
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [stompClient, setStompClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Retrieve user ID from Redux store
   const userId = useSelector((state: RootState) => state.auth.userId);
 
-  // Example of using userId
+  // ----- Lifecycle: on mount -----
   useEffect(() => {
     if (userId) {
       console.log("Authenticated user ID:", userId);
@@ -48,13 +52,14 @@ export default function GamePage() {
     }
   }, [userId]);
 
-  // Establish Websocket connection
+  // Establish WebSocket connection when gameId and userId are available
   useEffect(() => {
     if (!params.gameId) return;
 
     console.log("Initializing WebSocket connection...");
     console.log("Current userId:", userId);
 
+    // Create the SockJS + STOMP client
     const sock = new SockJS(`http://localhost:8081/ws/game`);
     const client = new Client({
       webSocketFactory: () => sock,
@@ -62,16 +67,17 @@ export default function GamePage() {
       onConnect: () => {
         console.log("Connected to WebSocket");
 
-        // Subscribe to the game's topic
+        // ----- Subscriptions -----
+        // 1. Main game topic (for INITIAL_STATE, UPDATE_BOARD, JOIN, LEAVE, etc.)
         client.subscribe(`/topic/game/${params.gameId}`, (message) => {
           const data = JSON.parse(message.body);
-          console.log("Received message:", data);
+          console.log("Received game message:", data);
 
           if (
             data.action === "INITIAL_STATE" ||
             data.action === "UPDATE_BOARD"
           ) {
-            // Transform backend stones to frontend format
+            // If the server sends a serialized stones object, transform it
             if (data.gameRoom.stonesSerialized) {
               data.gameRoom.stones = JSON.parse(data.gameRoom.stonesSerialized);
             }
@@ -86,7 +92,46 @@ export default function GamePage() {
           }
         });
 
-        // Send a "JOIN" message to the backend to join the game
+        // 2. Timer topic (for real-time clock updates)
+        client.subscribe(`/topic/game/${params.gameId}/timer`, (message) => {
+          const timerData = JSON.parse(message.body);
+
+          // Update blackTime/whiteTime in our local game state
+          setGameState((prevState) => {
+            if (!prevState) return prevState;
+            return {
+              ...prevState,
+              blackTime: timerData.blackTime,
+              whiteTime: timerData.whiteTime,
+            };
+          });
+        });
+
+        // 2. Timeout Notiflications
+        let timeoutSubscription = client.subscribe(
+          `/topic/game/${params.gameId}/timeout`,
+          (message) => {
+            const timeoutData = JSON.parse(message.body);
+            console.log("Received timeout message:", timeoutData);
+
+            // Example: Display an alert or update state to show the winner
+            alert(`Game over! Winner by timeout: ${timeoutData.winner}`);
+
+            // Unsubscribe from further timeout notifications
+            timeoutSubscription.unsubscribe();
+
+            // Optionally, you could also stop listening to updates or mark the game as finished in your UI state
+            setGameState((prevState) => {
+              if (!prevState) return prevState;
+              return {
+                ...prevState,
+                // Perhaps store the winner or mark the game as ended
+              };
+            });
+          }
+        );
+
+        // ----- Publish Join Message -----
         client.publish({
           destination: "/app/game.join",
           body: JSON.stringify({ roomId: params.gameId, userId: userId }),
@@ -106,7 +151,7 @@ export default function GamePage() {
     client.activate();
     setStompClient(client);
 
-    // Leave room when users exits the tab
+    // Cleanup: leave room and deactivate on unmount or browser tab close
     const handleLeave = () => {
       if (client && client.connected) {
         client.publish({
@@ -149,7 +194,7 @@ export default function GamePage() {
     });
   };
 
-  // Determine player positions
+  // ----- Player Roles -----
   const currentUser = Array.from(gameState?.players || []).find(
     (player) => player.userId === userId
   );
@@ -157,6 +202,7 @@ export default function GamePage() {
     (player) => player.userId !== userId
   );
 
+  // ----- Rendering -----
   if (loading) {
     return <div>Loading game...</div>;
   }
@@ -178,12 +224,11 @@ export default function GamePage() {
               // Add player info and time remaining
             />
             <Timer
-              initialTime={
+              currentTime={
                 opponent?.color === "black"
                   ? gameState.blackTime
                   : gameState.whiteTime
               }
-              isRunning={gameState.currentPlayerColor === opponent?.color}
               onTimeUp={() => alert(`${opponent?.userName}'s time is up!`)}
             />
           </div>
@@ -206,12 +251,11 @@ export default function GamePage() {
               // Add player info and time remaining
             />
             <Timer
-              initialTime={
+              currentTime={
                 currentUser?.color === "black"
                   ? gameState.blackTime
                   : gameState.whiteTime
               }
-              isRunning={gameState.currentPlayerColor === currentUser?.color}
               onTimeUp={() => alert(`${currentUser?.userName}'s time is up!`)}
             />
           </div>

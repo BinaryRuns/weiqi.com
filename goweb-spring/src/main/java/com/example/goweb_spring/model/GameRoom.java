@@ -53,7 +53,6 @@ public class GameRoom implements Serializable {
     }
 
     public void addPlayer(String userId, String userName) {
-
         // Check if the game already has a black or white player
         boolean blackAssigned = players.stream().anyMatch(player -> player.getColor().equals("black"));
         boolean whiteAssigned = players.stream().anyMatch(player -> player.getColor().equals("white"));
@@ -165,8 +164,6 @@ public class GameRoom implements Serializable {
             initializeBoard(this.boardSize);
         }
     }
-
-
 
     // Custom getStones, because redis don't store any array only the serialize so we need to deserialize before we continue
     public List<List<Integer>> getStones() {

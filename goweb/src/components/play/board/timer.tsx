@@ -3,26 +3,20 @@
 import React, { useState, useEffect } from "react";
 
 interface TimerProps {
-  initialTime: number; // Initial time in seconds
+  currentTime: number; // Initial time in seconds
   onTimeUp?: () => void; // Optional callback when timer reaches zero
-  isRunning?: boolean; // Optional prop to start/stop the timer
 }
 
-const Timer: React.FC<TimerProps> = ({ initialTime, onTimeUp, isRunning }) => {
-  const [time, setTime] = useState(initialTime);
+const Timer: React.FC<TimerProps> = ({ currentTime, onTimeUp }) => {
+  const [time, setTime] = useState(currentTime);
 
+  // Update local state when currentTime prop changes
   useEffect(() => {
-    if (!isRunning || time <= 0) {
-      if (time <= 0) onTimeUp?.();
-      return;
+    setTime(currentTime);
+    if (currentTime <= 0) {
+      onTimeUp?.();
     }
-
-    const timer = setInterval(() => {
-      setTime((prevTime) => prevTime - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [time, onTimeUp, isRunning]);
+  }, [currentTime, onTimeUp]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
