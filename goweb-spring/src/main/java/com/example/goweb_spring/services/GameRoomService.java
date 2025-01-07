@@ -13,10 +13,12 @@ import jakarta.servlet.Filter;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.*;
 
 @Service
 public class GameRoomService {
@@ -25,9 +27,10 @@ public class GameRoomService {
     private final GameRoomRepository  gameRoomRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final UserRepository userRepository;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
+    private final Map<String, ScheduledFuture<?>> timers = new ConcurrentHashMap<>();
 
-
-    public GameRoomService(GameRoomRepository gameRoomRepository, SimpMessagingTemplate simpMessagingTemplate , UserRepository userRepository ) {
+    public GameRoomService(GameRoomRepository gameRoomRepository, SimpMessagingTemplate simpMessagingTemplate , UserRepository userRepository) {
         this.gameRoomRepository = gameRoomRepository;
         this.simpMessagingTemplate = simpMessagingTemplate;
         this.userRepository = userRepository;
@@ -88,7 +91,60 @@ public class GameRoomService {
         // Notify all subscribers with the updated GameRoom object
         simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
                 new RoomEvent("INITIAL_STATE", userId, convertToDTO(gameRoom)));
+
+        // Start timer only if the room has reached a maximum capacity
+        if (gameRoom.isFull()) {
+            startTimer(roomId);
+        }
     }
+
+
+    private void startTimer(String roomId) {
+        if (timers.containsKey(roomId)) return;
+
+        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(() -> {
+            onTimerTick(roomId);
+        }, 0 , 1, TimeUnit.SECONDS);
+    }
+
+    private void stopTimer(String roomId) {
+        ScheduledFuture<?> future = timers.remove(roomId);
+
+        if (future != null) {
+            future.cancel(true);
+        }
+    }
+
+    private void onTimerTick(String roomId) {
+        try {
+            GameRoom room = gameRoomRepository.findById(roomId)
+                    .orElseThrow(() -> new RuntimeException("Room does not exist"));
+
+            room.decrementTimer();
+
+            if (room.isTimeout()) {
+                simpMessagingTemplate.convertAndSend(
+                        "/topic/game/" + roomId + "/timeout",
+                        Map.of("winner", (room.getBlackTime() <= 0) ? "white":"black")
+                );
+
+                stopTimer(roomId);
+            } else {
+                simpMessagingTemplate.convertAndSend(
+                        "/topic/game/" + roomId + "/timer",
+                        Map.of("blackTime", room.getBlackTime(),
+                                "whiteTime", room.getWhiteTime())
+                );
+            }
+
+            gameRoomRepository.save(room);
+        } catch (Exception e) {
+            e.printStackTrace();
+            stopTimer(roomId);
+        }
+    }
+
+
 
     /**
      * Allows a user to leave a game room.
@@ -153,7 +209,11 @@ public class GameRoomService {
         // Switch turn
         gameRoom.setCurrentPlayerColor(player.getColor().equals("black") ? "white" : "black");
 
-        // TODO: update time remaining
+
+        // TODO: Validate board / determining who won
+
+
+
 
 
         // Save changes
