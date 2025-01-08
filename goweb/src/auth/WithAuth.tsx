@@ -10,6 +10,8 @@ import { RootState } from "@/store/store";
 import { useEffect, useState } from "react";
 import { setAccessToken } from "@/store/authSlice";
 
+// TODO: refractor the protected route component better
+
 const withAuth = (WrappedComponent: React.ComponentType) => {
   return function ProtectedComponent() {
     const accessToken = useSelector(
