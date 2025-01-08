@@ -11,6 +11,8 @@ const AuthManager = () => {
 
   useEffect(() => {
     const refreshToken = async () => {
+      // TODO: Implement a loading state to prevent rendering protected routes prematurely
+
       try {
         const response = await fetch("/api/auth/refresh", {
           method: "POST",

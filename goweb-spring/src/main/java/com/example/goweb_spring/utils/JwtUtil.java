@@ -30,6 +30,20 @@ public class JwtUtil {
                 .compact();
     }
 
+
+    // Refresh token with existing token
+    public String generateRefreshToken(UUID userId, String username, Date expirationDate) {
+        return Jwts.builder()
+                .setSubject(String.valueOf(userId))
+                .claim("username", username)
+                .setIssuedAt(new Date())
+                .setExpiration(expirationDate)
+                .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+
+    // New refresh token
     public String generateRefreshToken(UUID userId, String username) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
@@ -64,6 +78,15 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+    }
+
+    public Date extractExpiration(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(SECRET_KEY)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
     }
 
     public boolean validateToken(String token) {

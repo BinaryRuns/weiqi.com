@@ -7,6 +7,7 @@ import com.example.goweb_spring.utils.JwtUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.UUID;
 
 @Service
@@ -64,9 +65,11 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid or Expired Refresh Token");
         }
 
-        // Extract user ID and username from the refresh token
+        // Extract user ID, username and expiration from the refresh token
         UUID userId = jwtUtil.extractUserId(refreshToken);
         String username = jwtUtil.extractUsername(refreshToken);
+        Date originalExpiration = jwtUtil.extractExpiration(refreshToken);
+
 
         // Verify user exists in the database
         UserEntity user = userRepository.findByUserId(userId)
@@ -74,7 +77,7 @@ public class AuthService {
 
         // Generate new access and refresh tokens
         String newAccessToken = jwtUtil.generateToken(user.getUserId(), user.getUsername());
-        String newRefreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUsername());
+        String newRefreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUsername(), originalExpiration);
 
         return new TokenResponse(newAccessToken, newRefreshToken);
     }
