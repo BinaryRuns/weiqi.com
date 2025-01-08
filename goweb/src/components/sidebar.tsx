@@ -27,23 +27,28 @@ const navItems = [
   { href: "/challenges", label: "Challenges", icon: TrophyIcon },
 ];
 
-export function Sidebar({ className = "" }: { className?: string }) {
+interface SidebarProps {
+  className?: string;
+  isMobile?: boolean;
+}
+
+export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
   const { accessToken, userName } = useSelector(
     (state: RootState) => state.auth
   );
+
   return (
     <div
-      className={`w-64 bg-sidebar border-r border-border px-4 py-6 flex flex-col ${className}`}
+      className={`${!isMobile ? 'w-64 bg-sidebar border-r border-border px-4 py-6' : ''} 
+        flex flex-col ${className} ${isMobile ? 'h-[calc(100vh-4rem)]' : 'h-full'}`}
     >
-      <Logo />
-
-      <nav className="space-y-1 mt-8 flex-1">
+      {!isMobile && <Logo />}
+      <nav className={`space-y-1 flex-1 ${isMobile ? 'px-2 py-4' : 'mt-8'}`}>
         {navItems.map((item) => (
           <NavItem key={item.href} {...item} />
         ))}
       </nav>
-
-      <div className="space-y-3 pt-6 border-t border-border">
+      <div className={`space-y-3 ${isMobile ? 'p-4 mb-safe' : 'pt-6'} border-t border-border`}>
         {!accessToken ? (
           <>
             <Button asChild variant="outline" className="w-full justify-start">
@@ -60,7 +65,6 @@ export function Sidebar({ className = "" }: { className?: string }) {
             </Button>
           </>
         ) : (
-          // If logged in, display avatar and user name
           <div className="flex items-center space-x-3">
             <Avatar>
               <AvatarImage
