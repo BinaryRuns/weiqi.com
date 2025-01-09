@@ -2,52 +2,48 @@
 
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { RootState, store } from "@/store/store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { setAccessToken, clearAccessToken } from "@/store/authSlice";
+import { refreshAccessToken } from "./AuthService";
 
 const AuthManager = () => {
   const dispatch = useDispatch();
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const refreshToken = async () => {
+    const handleRefreshToken = async () => {
       // TODO: Implement a loading state to prevent rendering protected routes prematurely
 
       try {
-        const response = await fetch("/api/auth/refresh", {
-          method: "POST",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          dispatch(setAccessToken(data.accessToken));
-        } else {
-          dispatch(clearAccessToken());
-        }
+        const data = await refreshAccessToken();
+        dispatch(setAccessToken(data.accessToken));
       } catch (error) {
         console.error("Failed to refresh token on load:", error);
         dispatch(clearAccessToken());
+      } finally {
+        setLoading(false);
       }
     };
 
     if (!accessToken) {
-      refreshToken();
+      handleRefreshToken();
+    } else {
+      setLoading(false);
     }
   }, [accessToken, dispatch]);
 
+  if (loading) {
+    return <div>Loading....</div>;
+  }
+  // Don't render anything
   return null;
 };
 
-const AuthProviderWrapper = ({ children }: { children: React.ReactNode }) => {
-  return <Provider store={store}>{children}</Provider>;
-};
-
-const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <AuthProviderWrapper>
-      <AuthManager />
-      {children}
-    </AuthProviderWrapper>
-  );
-};
+const AuthProvider = ({ children }: { children: React.ReactNode }) => (
+  <Provider store={store}>
+    <AuthManager />
+    {children}
+  </Provider>
+);
 export default AuthProvider;

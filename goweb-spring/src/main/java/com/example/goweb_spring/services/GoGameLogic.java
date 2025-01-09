@@ -5,94 +5,96 @@ import com.example.goweb_spring.model.GameRoom;
 import java.util.*;
 
 public class GoGameLogic {
+
     /**
      * Validates if a move is legal on the board
+     *
      * @param stones Current board state
-     * @param x X coordinate of the move
-     * @param y Y coordinate of the move
-     * @param color Color of the stone being placed ("black" or "white")
+     * @param x      X coordinate of the move
+     * @param y      Y coordinate of the move
+     * @param color  Color of the stone being placed ("black" or "white")
      * @return true if move is legal, false otherwise
      */
-    public static boolean isValidMove(List<List<Integer>> stones, int x, int y, String color) {
-        int boardSize = stones.size();
+    public static List<List<Integer>> placeMove(List<List<Integer>> stones, int x, int y, String color) {
         int playerVal = color.equals("black") ? 1 : 2;
-        
-        // Check if position is already occupied
+
+        // Check if the position is already occupied
         if (stones.get(y).get(x) != 0) {
-            return false;
+            throw new IllegalStateException("Invalid move: Position is already occupied");
         }
-        
+
+        // Clone the board to avoid modifying the original reference
+        List<List<Integer>> updatedStones = cloneBoard(stones);
+
         // Temporarily place the stone
-        stones.get(y).set(x, playerVal);
-        
-        // Check for suicide rule
-        boolean hasLiberties = hasLiberties(stones, x, y);
-        
-        // Check if the move captures any opponent stones
-        boolean capturesOpponent = checkForCaptures(stones, x, y, color);
-        
-        // Remove the temporary stone
-        stones.get(y).set(x, 0);
-        
-        // Move is valid if it either has liberties or captures opponent stones
-        return hasLiberties || capturesOpponent;
+        updatedStones.get(y).set(x, playerVal);
+
+        // Check for liberties (suicide rule) or captures
+        boolean hasLiberties = hasLiberties(updatedStones, x, y);
+        boolean capturesOpponent = checkForCaptures(updatedStones, x, y, color);
+
+        // If the move is invalid, throw an exception and return the original board
+        if (!hasLiberties && !capturesOpponent) {
+            throw new IllegalStateException("Invalid move: No liberties and no captures");
+        }
+
+        return updatedStones; // Return the updated board
     }
-    
+
+    private static List<List<Integer>> cloneBoard(List<List<Integer>> stones) {
+        List<List<Integer>> clonedBoard = new ArrayList<>();
+        for (List<Integer> row : stones) {
+            clonedBoard.add(new ArrayList<>(row));
+        }
+        return clonedBoard;
+    }
     /**
      * Checks if a group of stones has any liberties (empty adjacent points)
      */
     private static boolean hasLiberties(List<List<Integer>> stones, int x, int y) {
-        int boardSize = stones.size();
-        int stoneColor = stones.get(y).get(x);
         Set<String> visited = new HashSet<>();
-        return checkLibertiesRecursive(stones, x, y, stoneColor, visited);
+        return checkLibertiesRecursive(stones, x, y, stones.get(y).get(x), visited);
     }
-    
-    private static boolean checkLibertiesRecursive(List<List<Integer>> stones, int x, int y, 
-                                                 int stoneColor, Set<String> visited) {
-        int boardSize = stones.size();
+
+    private static boolean checkLibertiesRecursive(List<List<Integer>> stones, int x, int y, int stoneColor, Set<String> visited) {
         String pos = x + "," + y;
-        
-        if (visited.contains(pos)) {
-            return false;
-        }
+        if (visited.contains(pos)) return false;
+
         visited.add(pos);
-        
-        // Check adjacent positions
+
         int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
         for (int[] dir : directions) {
-            int newX = x + dir[0];
-            int newY = y + dir[1];
-            
-            if (newX >= 0 && newX < boardSize && newY >= 0 && newY < boardSize) {
+            int newX = x + dir[0], newY = y + dir[1];
+            if (newX >= 0 && newX < stones.size() && newY >= 0 && newY < stones.size()) {
                 int adjacent = stones.get(newY).get(newX);
+
+                // If any adjacent position is empty, the group has liberties
                 if (adjacent == 0) {
-                    return true; // Found a liberty
+                    return true;
                 }
-                if (adjacent == stoneColor && 
-                    checkLibertiesRecursive(stones, newX, newY, stoneColor, visited)) {
+
+                // If the adjacent position has the same color, recursively check its liberties
+                if (adjacent == stoneColor && checkLibertiesRecursive(stones, newX, newY, stoneColor, visited)) {
                     return true;
                 }
             }
         }
         return false;
     }
-    
+
     /**
      * Checks if a move results in capturing opponent stones
      */
     private static boolean checkForCaptures(List<List<Integer>> stones, int x, int y, String color) {
-        int boardSize = stones.size();
-        int opponentVal = color.equals("black") ? 2 : 1;
+        int opponent = color.equals("black") ? 2 : 1;
         boolean captured = false;
-        
+
         int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
         for (int[] dir : directions) {
-            int newX = x + dir[0];
-            int newY = y + dir[1];
-            
-            if (newX >= 0 && newX < boardSize && newY >= 0 && newY < boardSize) {
-                if (stones.get(newY).get(newX) == opponentVal && !hasLiberties(stones, newX, newY)) {
+            int newX = x + dir[0], newY = y + dir[1];
+            if (newX >= 0 && newX < stones.size() && newY >= 0 && newY < stones.size()) {
+                if (stones.get(newY).get(newX) == opponent && !hasLiberties(stones, newX, newY)) {
+                    // Capture the opponent's group
                     captured = true;
                     removeGroup(stones, newX, newY);
                 }
@@ -100,36 +102,29 @@ public class GoGameLogic {
         }
         return captured;
     }
-    
+
     /**
      * Removes a captured group of stones from the board
      */
     private static void removeGroup(List<List<Integer>> stones, int x, int y) {
-        int stoneColor = stones.get(y).get(x);
+        int color = stones.get(y).get(x);
         Set<String> visited = new HashSet<>();
-        removeGroupRecursive(stones, x, y, stoneColor, visited);
+        removeGroupRecursive(stones, x, y, color, visited);
     }
-    
-    private static void removeGroupRecursive(List<List<Integer>> stones, int x, int y, 
-                                           int stoneColor, Set<String> visited) {
-        int boardSize = stones.size();
+
+    private static void removeGroupRecursive(List<List<Integer>> stones, int x, int y, int color, Set<String> visited) {
         String pos = x + "," + y;
-        
-        if (visited.contains(pos)) {
-            return;
-        }
+        if (visited.contains(pos)) return;
+
         visited.add(pos);
-        
-        stones.get(y).set(x, 0); // Remove stone
-        
+        stones.get(y).set(x, 0); // Remove the stone
+
         int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
         for (int[] dir : directions) {
-            int newX = x + dir[0];
-            int newY = y + dir[1];
-            
-            if (newX >= 0 && newX < boardSize && newY >= 0 && newY < boardSize) {
-                if (stones.get(newY).get(newX) == stoneColor) {
-                    removeGroupRecursive(stones, newX, newY, stoneColor, visited);
+            int newX = x + dir[0], newY = y + dir[1];
+            if (newX >= 0 && newX < stones.size() && newY >= 0 && newY < stones.size()) {
+                if (stones.get(newY).get(newX) == color) {
+                    removeGroupRecursive(stones, newX, newY, color, visited);
                 }
             }
         }
