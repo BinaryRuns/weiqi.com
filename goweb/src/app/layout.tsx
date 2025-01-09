@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { RootLayout } from "@/components/layout/root-layout";
 
 import AuthProvider from "@/auth/AuthProvider";
+import { ToastProvider, ToastViewport } from "@/components/ui/toast";
 
 const inter = Inter({ subsets: ["latin"] });
 

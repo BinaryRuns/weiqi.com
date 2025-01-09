@@ -111,34 +111,6 @@ public class GameRoom implements Serializable {
         return blackTime <= 0 || whiteTime <= 0;
     }
 
-    /**
-     * Places a stone on the board at coordinates (x, y).
-     *
-     * @param x     row index
-     * @param y     column index
-     * @param color "black" or "white"
-     */
-    public void placeStone(int x, int y, String color) {
-
-        // Need to deserialize the stoneJson first
-        deserializeStones();
-
-        if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) {
-            throw new IllegalArgumentException("Coordinates out of bounds");
-        }
-        if (stones.get(y).get(x) != 0) {
-            throw new IllegalStateException("Intersection is already occupied");
-        }
-
-        int stoneValue = color.equalsIgnoreCase("black") ? 1 : 2;
-        stones.get(y).set(x, stoneValue);
-
-        // Switch current player
-        this.currentPlayerColor = color.equalsIgnoreCase("black") ? "white" : "black";
-
-        // after updating we need to serialize the stone
-        serializeStones();
-    }
 
     // Serialize the stones list to JSON
     private void serializeStones() {
@@ -169,6 +141,12 @@ public class GameRoom implements Serializable {
     public List<List<Integer>> getStones() {
         deserializeStones();
         return stones;
+    }
+
+
+    public void setStones(List<List<Integer>> updatedBoard) {
+        stones = updatedBoard;
+        serializeStones();
     }
 
     // Ensure stones are deserialized after loading from Redis

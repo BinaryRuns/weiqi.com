@@ -9,6 +9,7 @@ import { Client } from "@stomp/stompjs";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import Timer from "@/components/play/board/timer";
+import { useToast } from "@/hooks/use-toast";
 
 // types
 type BoardSize = 9 | 13 | 19;
@@ -39,7 +40,9 @@ export default function GamePage() {
   const params = useParams();
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [stompClient, setStompClient] = useState<Client | null>(null);
+  const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   // Retrieve user ID from Redux store
   const userId = useSelector((state: RootState) => state.auth.userId);
@@ -52,123 +55,112 @@ export default function GamePage() {
     }
   }, [userId]);
 
-  // Establish WebSocket connection when gameId and userId are available
+  // ----- WebSocket Connection -----
   useEffect(() => {
-    if (!params.gameId) return;
+    toast({
+      title: "Error",
+      description: "Test",
+      variant: "destructive",
+    });
+    if (!params.gameId || !userId) return;
 
     console.log("Initializing WebSocket connection...");
-    console.log("Current userId:", userId);
-
-    // Create the SockJS + STOMP client
-    const sock = new SockJS(`http://localhost:8081/ws/game`);
+    const sock = new SockJS(`http://localhost:8081/ws/game?userId=${userId}`);
     const client = new Client({
       webSocketFactory: () => sock,
-      debug: (str) => console.log(str),
+      // debug: (str) => console.log(str),
       onConnect: () => {
         console.log("Connected to WebSocket");
-
-        // ----- Subscriptions -----
-        // 1. Main game topic (for INITIAL_STATE, UPDATE_BOARD, JOIN, LEAVE, etc.)
-        client.subscribe(`/topic/game/${params.gameId}`, (message) => {
-          const data = JSON.parse(message.body);
-          console.log("Received game message:", data);
-
-          if (
-            data.action === "INITIAL_STATE" ||
-            data.action === "UPDATE_BOARD"
-          ) {
-            // If the server sends a serialized stones object, transform it
-            if (data.gameRoom.stonesSerialized) {
-              data.gameRoom.stones = JSON.parse(data.gameRoom.stonesSerialized);
-            }
-            setGameState(data.gameRoom);
-            setLoading(false);
-          } else if (data.action === "JOIN") {
-            setGameState(data.gameRoom);
-            setLoading(false);
-            console.log(`${data.userId} joined the game.`);
-          } else if (data.action === "LEAVE") {
-            console.log(`${data.userId} left the game.`);
-          }
-        });
-
-        // 2. Timer topic (for real-time clock updates)
-        client.subscribe(`/topic/game/${params.gameId}/timer`, (message) => {
-          const timerData = JSON.parse(message.body);
-
-          // Update blackTime/whiteTime in our local game state
-          setGameState((prevState) => {
-            if (!prevState) return prevState;
-            return {
-              ...prevState,
-              blackTime: timerData.blackTime,
-              whiteTime: timerData.whiteTime,
-            };
-          });
-        });
-
-        // 2. Timeout Notiflications
-        let timeoutSubscription = client.subscribe(
-          `/topic/game/${params.gameId}/timeout`,
-          (message) => {
-            const timeoutData = JSON.parse(message.body);
-            console.log("Received timeout message:", timeoutData);
-
-            // Example: Display an alert or update state to show the winner
-            alert(`Game over! Winner by timeout: ${timeoutData.winner}`);
-
-            // Unsubscribe from further timeout notifications
-            timeoutSubscription.unsubscribe();
-
-            // Optionally, you could also stop listening to updates or mark the game as finished in your UI state
-            setGameState((prevState) => {
-              if (!prevState) return prevState;
-              return {
-                ...prevState,
-                // Perhaps store the winner or mark the game as ended
-              };
-            });
-          }
-        );
-
-        // ----- Publish Join Message -----
-        client.publish({
-          destination: "/app/game.join",
-          body: JSON.stringify({ roomId: params.gameId, userId: userId }),
-        });
-
-        console.log("Sent join message:", {
-          roomId: params.gameId,
-          userId: userId,
-        });
+        setConnected(true); // Set connected state to true
       },
-
       onDisconnect: () => {
         console.log("Disconnected from WebSocket");
+        setConnected(false); // Set connected state to false
       },
     });
 
     client.activate();
     setStompClient(client);
 
-    // Cleanup: leave room and deactivate on unmount or browser tab close
-    const handleLeave = () => {
-      if (client && client.connected) {
-        client.publish({
-          destination: "/app/game.leave",
-          body: JSON.stringify({ roomId: params.gameId, userId: userId }),
-        });
+    return () => {
+      if (client) {
+        if (client.connected) {
+          client.publish({
+            destination: "/app/game.leave",
+            body: JSON.stringify({ roomId: params.gameId, userId }),
+          });
+        }
+        client.deactivate();
       }
     };
+  }, [params.gameId, userId]);
 
-    window.addEventListener("beforeunload", handleLeave);
+  // ------ Subscribe to socket messages ------
+  useEffect(() => {
+    if (!stompClient || !connected) return;
+
+    // Subscribe to game topic
+    const gameSubscription = stompClient.subscribe(
+      `/topic/game/${params.gameId}`,
+      (message) => {
+        const data = JSON.parse(message.body);
+        console.log("Received game message:", data);
+
+        if (data.action === "INITIAL_STATE" || data.action === "UPDATE_BOARD") {
+          // If the server sends a serialized stones object, transform it
+          if (data.gameRoom.stonesSerialized) {
+            data.gameRoom.stones = JSON.parse(data.gameRoom.stonesSerialized);
+          }
+          setGameState(data.gameRoom);
+          setLoading(false);
+        } else if (data.action === "JOIN") {
+          setGameState(data.gameRoom);
+          setLoading(false);
+          console.log(`${data.userId} joined the game.`);
+        } else if (data.action === "LEAVE") {
+          console.log(`${data.userId} left the game.`);
+        }
+      }
+    );
+
+    const gameTimer = stompClient.subscribe(
+      `/topic/game/${params.gameId}/timer`,
+      (message) => {
+        const timerData = JSON.parse(message.body);
+
+        // Update blackTime/whiteTime in our local game state
+        setGameState((prevState) => {
+          if (!prevState) return prevState;
+          return {
+            ...prevState,
+            blackTime: timerData.blackTime,
+            whiteTime: timerData.whiteTime,
+          };
+        });
+      }
+    );
+
+    // Subscribe to errors
+    const errorSubscription = stompClient.subscribe(
+      `/user/queue/errors`,
+      (message) => {
+        const errorData = JSON.parse(message.body);
+        console.error("WebSocket Error:", errorData);
+      }
+    );
+
+    // Publish join message
+    stompClient.publish({
+      destination: "/app/game.join",
+      body: JSON.stringify({ roomId: params.gameId, userId }),
+    });
 
     return () => {
-      handleLeave();
-      client.deactivate();
-      window.removeEventListener("beforeunload", handleLeave);
+      gameSubscription.unsubscribe();
+      errorSubscription.unsubscribe();
+      gameTimer.unsubscribe();
     };
-  }, [params.gameId, userId]);
+  }, [stompClient, connected, params.gameId, userId, toast]);
 
   /**
    * Handles the placement of a stone on the board
@@ -270,3 +262,145 @@ export default function GamePage() {
     </div>
   );
 }
+
+// ----- Subscribe to WebSocket Errors -----
+// useEffect(() => {
+//   if (!stompClient) return;
+
+//   const errorSubscription = stompClient.subscribe(
+//     "/user/queue/errors",
+//     (message) => {
+//       const errorData = JSON.parse(message.body);
+//       console.error("WebSocket Error:", errorData);
+
+//       toast({
+//         title: "Error",
+//         description: errorData.errorMessage,
+//         variant: "destructive",
+//       });
+//     }
+//   );
+
+//   return () => {
+//     errorSubscription.unsubscribe();
+//   };
+// }, [stompClient]);
+
+// Establish WebSocket connection when gameId and userId are available
+// useEffect(() => {
+//   if (!params.gameId) return;
+
+//   console.log("Initializing WebSocket connection...");
+//   console.log("Current userId:", userId);
+
+//   // Create the SockJS + STOMP client
+//   const sock = new SockJS(`http://localhost:8081/ws/game`);
+//   const client = new Client({
+//     webSocketFactory: () => sock,
+//     debug: (str) => console.log(str),
+//     onConnect: () => {
+//       console.log("Connected to WebSocket");
+
+//       // ----- Subscriptions -----
+//       // 1. Main game topic (for INITIAL_STATE, UPDATE_BOARD, JOIN, LEAVE, etc.)
+//       client.subscribe(`/topic/game/${params.gameId}`, (message) => {
+//         const data = JSON.parse(message.body);
+//         console.log("Received game message:", data);
+
+//         if (
+//           data.action === "INITIAL_STATE" ||
+//           data.action === "UPDATE_BOARD"
+//         ) {
+//           // If the server sends a serialized stones object, transform it
+//           if (data.gameRoom.stonesSerialized) {
+//             data.gameRoom.stones = JSON.parse(data.gameRoom.stonesSerialized);
+//           }
+//           setGameState(data.gameRoom);
+//           setLoading(false);
+//         } else if (data.action === "JOIN") {
+//           setGameState(data.gameRoom);
+//           setLoading(false);
+//           console.log(`${data.userId} joined the game.`);
+//         } else if (data.action === "LEAVE") {
+//           console.log(`${data.userId} left the game.`);
+//         }
+//       });
+
+//       // 2. Timer topic (for real-time clock updates)
+//       client.subscribe(`/topic/game/${params.gameId}/timer`, (message) => {
+//         const timerData = JSON.parse(message.body);
+
+//         // Update blackTime/whiteTime in our local game state
+//         setGameState((prevState) => {
+//           if (!prevState) return prevState;
+//           return {
+//             ...prevState,
+//             blackTime: timerData.blackTime,
+//             whiteTime: timerData.whiteTime,
+//           };
+//         });
+//       });
+
+//       // 2. Timeout Notiflications
+//       let timeoutSubscription = client.subscribe(
+//         `/topic/game/${params.gameId}/timeout`,
+//         (message) => {
+//           const timeoutData = JSON.parse(message.body);
+//           console.log("Received timeout message:", timeoutData);
+
+//           // Example: Display an alert or update state to show the winner
+//           alert(`Game over! Winner by timeout: ${timeoutData.winner}`);
+
+//           // Unsubscribe from further timeout notifications
+//           timeoutSubscription.unsubscribe();
+
+//           // Optionally, you could also stop listening to updates or mark the game as finished in your UI state
+//           setGameState((prevState) => {
+//             if (!prevState) return prevState;
+//             return {
+//               ...prevState,
+//               // Perhaps store the winner or mark the game as ended
+//             };
+//           });
+//         }
+//       );
+
+//       // ----- Publish Join Message -----
+//       client.publish({
+//         destination: "/app/game.join",
+//         body: JSON.stringify({ roomId: params.gameId, userId: userId }),
+//       });
+
+//       console.log("Sent join message:", {
+//         roomId: params.gameId,
+//         userId: userId,
+//       });
+//     },
+
+//     onDisconnect: () => {
+//       console.log("Disconnected from WebSocket");
+//     },
+//   });
+
+//   client.activate();
+//   setStompClient(client);
+
+//   // Cleanup: leave room and deactivate on unmount or browser tab close
+//   const handleLeave = () => {
+//     if (client && client.connected) {
+//       client.publish({
+//         destination: "/app/game.leave",
+//         body: JSON.stringify({ roomId: params.gameId, userId: userId }),
+//       });
+//       client.deactivate();
+//     }
+//   };
+
+//   window.addEventListener("beforeunload", handleLeave);
+
+//   return () => {
+//     handleLeave();
+//     client.deactivate();
+//     window.removeEventListener("beforeunload", handleLeave);
+//   };
+// }, [params.gameId, userId]);

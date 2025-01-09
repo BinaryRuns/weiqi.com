@@ -10,11 +10,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // Prefix for messages bound for @MessageMapping methods
         registry.setApplicationDestinationPrefixes("/app");
-        // Enable a simple in-memory broker with destination prefixes /topic and /queue
-        registry.enableSimpleBroker("/topic", "/queue");
-        // Set user destination prefix for user-specific messaging
+        registry.enableSimpleBroker("/queue", "/topic"); // Switch to rabbitMq in production
         registry.setUserDestinationPrefix("/user");
     }
 
