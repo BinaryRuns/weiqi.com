@@ -70,7 +70,6 @@ public class AuthService {
         String username = jwtUtil.extractUsername(refreshToken);
         Date originalExpiration = jwtUtil.extractExpiration(refreshToken);
 
-
         // Verify user exists in the database
         UserEntity user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
