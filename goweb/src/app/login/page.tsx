@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Input } from "@nextui-org/input";
 import { Button } from "@nextui-org/button";
@@ -14,33 +14,30 @@ import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { setAccessToken } from "@/store/authSlice";
 
-
 const LoginSchema = z.object({
   username: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters")
-})
-
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 export default function LoginPage() {
-
-  const [formData, setFormData] = useState({username:"", password:""})
-  const [errors,setErrors] = useState({username:"", password:""})
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({ username: "", password: "" });
 
   const dispatch = useDispatch();
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {name, value} = e.target
+    const { name, value } = e.target;
 
-    setFormData({...formData, [name]:value})
+    setFormData({ ...formData, [name]: value });
     setErrors({ ...errors, [name]: "" });
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // validate data using zod
-    const validationResult = LoginSchema.safeParse(formData)
+    const validationResult = LoginSchema.safeParse(formData);
 
     if (!validationResult.success) {
       // Extract and display errors
@@ -60,19 +57,18 @@ export default function LoginPage() {
     const response = await fetch("api/auth/login", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(formData)
-    })
+      body: JSON.stringify(formData),
+    });
 
-    const data = await response.json()
+    const data = await response.json();
     const accessToken = data.accessToken;
 
-    dispatch(setAccessToken(accessToken))
+    dispatch(setAccessToken(accessToken));
 
-    router.push("/")
-  }
-
+    router.push("/");
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center">

@@ -64,10 +64,7 @@ public class GameRoom implements Serializable {
     }
 
     public void removePlayer(String userId) {
-        // Find the player by userId and remove them from the set
         players.removeIf(player -> player.getUserId().equals(userId));
-
-        // Update the current players count
         currentPlayers = players.size();
     }
 
@@ -77,6 +74,9 @@ public class GameRoom implements Serializable {
 
     /**
      * Initializes the 2D board with all zeros.
+     * 1 will represent black pieces
+     * 2 will represent white pieces
+     * 0 will represent empty
      */
     private void initializeBoard(int boardSize) {
         stones = new ArrayList<>();
@@ -88,14 +88,6 @@ public class GameRoom implements Serializable {
             stones.add(row);
         }
         serializeStones(); // Update stonesJson after initialization
-    }
-
-
-    public boolean isValidMove(int x, int y) {
-        return stones != null
-                && x >= 0 && x < boardSize
-                && y >= 0 && y < boardSize
-                && stones.get(x).get(y) == 0;
     }
 
 
@@ -143,15 +135,8 @@ public class GameRoom implements Serializable {
         return stones;
     }
 
-
     public void setStones(List<List<Integer>> updatedBoard) {
         stones = updatedBoard;
         serializeStones();
-    }
-
-    // Ensure stones are deserialized after loading from Redis
-    @PostConstruct
-    private void postConstruct() {
-        deserializeStones();
     }
 }
