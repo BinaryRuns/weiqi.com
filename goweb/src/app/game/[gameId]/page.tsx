@@ -10,6 +10,8 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import Timer from "@/components/play/board/timer";
 import { useToast } from "@/hooks/use-toast";
+import ChatSection from "@/components/play/board/ChatSection";
+import { ChatMessage, MessageType } from "@/types/ChatMessage";
 
 // types
 type BoardSize = 9 | 13 | 19;
@@ -17,7 +19,7 @@ type BoardSize = 9 | 13 | 19;
 interface GameState {
   boardSize: BoardSize;
   timeControl: string;
-  stones: Array<any>; // Define proper stone type
+  stones: Array<any>;
   players: Set<Player>;
   currentPlayerColor: "black" | "white";
   currentPlayers: Array<Player>;
@@ -26,7 +28,6 @@ interface GameState {
   whiteTime: number;
   roomId: string;
   roomName: string;
-  // Add other game state properties
 }
 
 interface Player {
@@ -40,60 +41,64 @@ export default function GamePage() {
   const params = useParams();
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [stompClient, setStompClient] = useState<Client | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messageInput, setMessageInput] = useState<string>("");
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   // Retrieve user ID from Redux store
   const userId = useSelector((state: RootState) => state.auth.userId);
+  const userName = useSelector((state: RootState) => state.auth.userName);
 
-  // ----- Lifecycle: on mount -----
+  // ----- Testing -----
   useEffect(() => {
     if (userId) {
       console.log("Authenticated user ID:", userId);
-      // You can use userId for various purposes, like fetching user-specific data
+      console.log("Username: " + userName);
     }
-  }, [userId]);
+  }, [userId, userName]);
 
   // ----- WebSocket Connection -----
   useEffect(() => {
-    toast({
-      title: "Error",
-      description: "Test",
-      variant: "destructive",
-    });
     if (!params.gameId || !userId) return;
 
     console.log("Initializing WebSocket connection...");
     const sock = new SockJS(`http://localhost:8081/ws/game?userId=${userId}`);
     const client = new Client({
       webSocketFactory: () => sock,
-      // debug: (str) => console.log(str),
+      debug: () => {},
       onConnect: () => {
         console.log("Connected to WebSocket");
-        setConnected(true); // Set connected state to true
+        setConnected(true);
       },
       onDisconnect: () => {
         console.log("Disconnected from WebSocket");
-        setConnected(false); // Set connected state to false
+        setConnected(false);
       },
     });
 
     client.activate();
     setStompClient(client);
 
-    return () => {
-      if (client) {
-        if (client.connected) {
-          client.publish({
-            destination: "/app/game.leave",
-            body: JSON.stringify({ roomId: params.gameId, userId }),
-          });
-        }
+    // Cleanup: Handle room leaving and deactivate the client
+    const handleLeave = () => {
+      if (client.connected) {
+        client.publish({
+          destination: "/app/game.leave",
+          body: JSON.stringify({ roomId: params.gameId, userId }),
+        });
         client.deactivate();
       }
     };
-  }, [params.gameId, userId]);
+
+    window.addEventListener("beforeunload", handleLeave);
+
+    return () => {
+      handleLeave();
+      window.removeEventListener("beforeunload", handleLeave);
+    };
+  }, [params.gameId, userId, userName]);
 
   // ------ Subscribe to socket messages ------
   useEffect(() => {
@@ -160,7 +165,23 @@ export default function GamePage() {
       errorSubscription.unsubscribe();
       gameTimer.unsubscribe();
     };
-  }, [stompClient, connected, params.gameId, userId, toast]);
+  }, [stompClient, connected, params.gameId, userId, toast, userName]);
+
+  useEffect(() => {
+    if (!stompClient || !connected) return;
+
+    const chatSubscription = stompClient.subscribe(
+      `/topic/game/${params.gameId}/chat`,
+      (message) => {
+        const chatMessage: ChatMessage = JSON.parse(message.body);
+        setMessages((prev) => [...prev, chatMessage]);
+      }
+    );
+
+    return () => {
+      chatSubscription.unsubscribe();
+    };
+  }, [stompClient, connected, userName, userId]);
 
   /**
    * Handles the placement of a stone on the board
@@ -184,6 +205,23 @@ export default function GamePage() {
         y: y,
       }),
     });
+  };
+
+  const sendMessage = () => {
+    if (!stompClient || !messageInput.trim()) return;
+
+    stompClient.publish({
+      destination: `/app/game.sendMessage/${params.gameId}`,
+      body: JSON.stringify({
+        sender: userId,
+        senderUsername: userName,
+        content: messageInput,
+        roomId: params.gameId,
+        type: MessageType.CHAT,
+      }),
+    });
+
+    setMessageInput("");
   };
 
   // ----- Player Roles -----
@@ -257,6 +295,12 @@ export default function GamePage() {
       <div className="w-full md:w-[500px] h-full p-6 overflow-y-auto">
         <div className="bg-bigcard p-6 rounded-lg h-full">
           {/* Add game controls, chat, move history, etc. */}
+          <ChatSection
+            messages={messages}
+            messageInput={messageInput}
+            setMessageInput={setMessageInput}
+            sendMessage={sendMessage}
+          />
         </div>
       </div>
     </div>

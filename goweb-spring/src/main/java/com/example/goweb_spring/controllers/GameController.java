@@ -5,12 +5,10 @@ import com.example.goweb_spring.model.GameRoom;
 import com.example.goweb_spring.model.JoinRoomMessage;
 import com.example.goweb_spring.model.MoveMessage;
 import com.example.goweb_spring.services.GameRoomService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
 
@@ -52,13 +50,12 @@ public class GameController {
     }
 
     /**
-     * Handles messages sent to /app/chat.sendMessage
+     * Handles messages sent to /app/chat.sendMessage/{roomId}
      * Broadcasts the message to /topic/game/{roomId}
      */
     @MessageMapping("/game.sendMessage/{roomId}")
-    @SendTo("/topic/game/{roomId}")
-
-    public ChatMessage sendMessage(@Payload ChatMessage chatMessage,  @DestinationVariable("roomId") String roomId) {
+    @SendTo("/topic/game/{roomId}/chat")
+    public ChatMessage handleChatMessage(@Payload ChatMessage chatMessage,  @DestinationVariable("roomId") String roomId) {
         return chatMessage;
     }
 

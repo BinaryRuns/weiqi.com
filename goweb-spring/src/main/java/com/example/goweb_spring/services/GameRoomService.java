@@ -23,8 +23,6 @@ import org.springframework.messaging.simp.user.SimpUserRegistry;
 
 @Service
 public class GameRoomService {
-
-
     private final GameRoomRepository  gameRoomRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final UserRepository userRepository;
@@ -51,7 +49,6 @@ public class GameRoomService {
         String roomId = UUID.randomUUID().toString();
         GameRoom gameRoom = new GameRoom(roomId, roomName, maxPlayers, boardSize, timeControl);
 
-        // Debug log
         System.out.println("Saving GameRoom: " + gameRoom);
 
         gameRoomRepository.save(gameRoom);
@@ -80,10 +77,17 @@ public class GameRoomService {
         GameRoom gameRoom = gameRoomRepository.findById(roomId).orElse(null);
 
         if (gameRoom == null) {
-
             System.out.println("Room not found");
             // Notify the user via WebSocket about the error
             sendErrorToUser(userId, "ROOM_NOT_FOUND", "Room with ID " + roomId + " does not exist.");
+            return;
+        }
+
+        // Check if the user is already in the room
+        if (gameRoom.getPlayers().stream().anyMatch(p -> p.getUserId().equals(userId))) {
+            System.out.println("User is already in the room");
+            simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
+                    new RoomEvent("INITIAL_STATE", userId, convertToDTO(gameRoom)));
             return;
         }
 
@@ -127,6 +131,9 @@ public class GameRoomService {
         gameRoomRepository.save(gameRoom);
 
         if (gameRoom.getPlayers().isEmpty()) {
+
+            stopTimer(roomId);
+
             gameRoomRepository.delete(gameRoom);
         } else {
             gameRoomRepository.save(gameRoom);
@@ -180,8 +187,6 @@ public class GameRoomService {
             e.printStackTrace();
         }
     }
-
-
 
 
     /**
@@ -247,7 +252,6 @@ public class GameRoomService {
 //                    new RoomEvent("LEAVE", userId, convertToDTO(gameRoom)));
 //        }
 //    }
-
 
 
     private void sendErrorToUser(String userId, String errorCode, String errorMessage) {

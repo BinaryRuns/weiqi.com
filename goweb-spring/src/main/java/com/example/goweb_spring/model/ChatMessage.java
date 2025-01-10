@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor // Generates an all-args constructor
 public class ChatMessage {
     private String sender;
+    private String senderUsername;
     private String content;
     private String roomId;
     private MessageType type;
