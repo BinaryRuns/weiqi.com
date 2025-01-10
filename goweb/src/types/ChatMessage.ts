@@ -1,6 +1,5 @@
 export interface ChatMessage {
   sender: string;
-  senderUsername: string;
   content: string;
   roomId: string;
   type: MessageType;
