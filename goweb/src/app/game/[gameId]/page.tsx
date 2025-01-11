@@ -12,6 +12,7 @@ import Timer from "@/components/play/board/timer";
 import { useToast } from "@/hooks/use-toast";
 import ChatSection from "@/components/play/board/ChatSection";
 import { ChatMessage, MessageType } from "@/types/ChatMessage";
+import GoSoundEffects from '@/components/GoBoard/GoSoundEffects';
 
 // types
 type BoardSize = 9 | 13 | 19;
@@ -46,6 +47,7 @@ export default function GamePage() {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [playSound, setPlaySound] = useState<string | null>(null);
 
   // Retrieve user ID from Redux store
   const userId = useSelector((state: RootState) => state.auth.userId);
@@ -144,7 +146,15 @@ export default function GamePage() {
         });
       }
     );
-
+    const soundSubscription = stompClient.subscribe(
+      `/topic/game/${params.gameId}/sound`,
+      (message) => {
+        const data = JSON.parse(message.body);
+        if (data.type === 'PLAY_SOUND') {
+          setPlaySound(data.color);
+        }
+      }
+    );
     // Subscribe to errors
     const errorSubscription = stompClient.subscribe(
       `/user/queue/errors`,
@@ -164,6 +174,7 @@ export default function GamePage() {
       gameSubscription.unsubscribe();
       errorSubscription.unsubscribe();
       gameTimer.unsubscribe();
+      soundSubscription.unsubscribe();
     };
   }, [stompClient, connected, params.gameId, userId, toast, userName]);
 
@@ -303,6 +314,7 @@ export default function GamePage() {
           />
         </div>
       </div>
+      <GoSoundEffects playSound={playSound} />
     </div>
   );
 }

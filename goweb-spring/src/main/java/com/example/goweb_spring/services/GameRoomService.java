@@ -15,6 +15,7 @@ import com.example.goweb_spring.repositories.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -201,11 +202,20 @@ public class GameRoomService {
     }
 
 
+
+    private void sendSoundNotification(String roomId, String color) {
+        Map<String, String> soundMessage = new HashMap<>();
+        soundMessage.put("type", "PLAY_SOUND");
+        soundMessage.put("color", color);
+        simpMessagingTemplate.convertAndSend("/topic/game/" + roomId + "/sound", soundMessage);
+    }
+
+   
     public void placeStone(String roomId, String userId, int x, int y) {
         GameRoom gameRoom = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
 
-        // Find player who is making the move
+       
         Player player = gameRoom.getPlayers().stream()
                 .filter(p -> p.getUserId().equals(userId))
                 .findFirst()
@@ -222,15 +232,18 @@ public class GameRoomService {
         );
 
         gameRoom.setStones(updatedStones); // Place move
+        
+        // Send sound notification before changing the turn
+        sendSoundNotification(roomId, player.getColor());
+        
         gameRoom.setCurrentPlayerColor(player.getColor().equals("black") ? "white" : "black"); // Switch turn
         gameRoomRepository.save(gameRoom); // Save changes
 
         GameRoomDTO gameRoomDTO = convertToDTO(gameRoom); // Convert to DTO for frontend
         simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-                new RoomEvent("UPDATE_BOARD", userId, gameRoomDTO)); // Broadcast the updated game state to all client
-
+                new RoomEvent("UPDATE_BOARD", userId, gameRoomDTO)); // Broadcast the updated game state to all clients
     }
-//
+
 //    public void handlePlayerDisconnect(String sessionId) {
 //        String roomId = sessionToRoomMap.get(sessionId);
 //        if (roomId == null) return;
