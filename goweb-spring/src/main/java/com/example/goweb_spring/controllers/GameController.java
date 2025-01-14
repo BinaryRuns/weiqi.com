@@ -11,6 +11,8 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
+import java.util.Map;
+
 
 /**
  * WebSocket Controller for handling game-related messaging.
@@ -79,4 +81,10 @@ public class GameController {
             e.printStackTrace();
         }
     }
+
+    @MessageMapping("/game.resign")
+    public void handleResign(@Payload JoinRoomMessage resignMessage) {
+        gameRoomService.resign(resignMessage.getRoomId(), resignMessage.getUserId());
+    }
+
 }

@@ -29,14 +29,11 @@ public class GameRoomService {
     private final UserRepository userRepository;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
     private final Map<String, ScheduledFuture<?>> timers = new ConcurrentHashMap<>();
-    private final Map<String, String> sessionToRoomMap = new ConcurrentHashMap<>();
-    private final SimpUserRegistry simpUserRegistry;
 
     public GameRoomService(GameRoomRepository gameRoomRepository, SimpMessagingTemplate simpMessagingTemplate , UserRepository userRepository, SimpUserRegistry simpUserRegistry) {
         this.gameRoomRepository = gameRoomRepository;
         this.simpMessagingTemplate = simpMessagingTemplate;
         this.userRepository = userRepository;
-        this.simpUserRegistry = simpUserRegistry;
     }
 
     /**
@@ -126,41 +123,87 @@ public class GameRoomService {
         GameRoom gameRoom = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
 
-        System.out.println("Leaving GameRoom: " + gameRoom);
+        System.out.println("Leaving GameRoom: -----------------------------------------------");
 
         gameRoom.removePlayer(userId);
         gameRoomRepository.save(gameRoom);
 
         if (gameRoom.getPlayers().isEmpty()) {
-
             stopTimer(roomId);
-
             gameRoomRepository.delete(gameRoom);
+
+            System.out.println("GameRoom " + roomId + " deleted as no players remain.");
         } else {
-            gameRoomRepository.save(gameRoom);
             simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
                     new RoomEvent("LEAVE", userId, convertToDTO(gameRoom)));
         }
     }
 
+    public void resign(String roomId, String userId) {
+        GameRoom gameRoom = gameRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
+
+
+        Player resigningPlayer = gameRoom.getPlayers().stream()
+                .filter(p -> p.getUserId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+
+        String winnerColor = resigningPlayer.getColor().equals("black") ? "white" : "black";
+
+        // Notify clients about the resignation and the winner
+        simpMessagingTemplate.convertAndSend(
+                "/topic/game/" + roomId + "/resign",
+                Map.of("resigningPlayer", resigningPlayer.getUserName(), "winner", winnerColor)
+        );
+
+        // Stop the Timer and clean up the room
+        stopTimer(roomId);
+        gameRoomRepository.delete(gameRoom);
+
+        System.out.println("User " + resigningPlayer.getUserName() + " resigned. Game ended.");
+    }
+
 
     private void startTimer(String roomId) {
-        if (timers.containsKey(roomId)) return;
+        if (timers.containsKey(roomId)) {
+            System.out.println("Timer for room " + roomId + " is already running.");
+            return;
+        }
 
         ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(() -> {
-            onTimerTick(roomId);
-        }, 0 , 1, TimeUnit.SECONDS);
+            try {
+                onTimerTick(roomId);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+
+        timers.put(roomId, future);
+        System.out.println("Timer for room " + roomId + " has been started.");
     }
 
     private void stopTimer(String roomId) {
         ScheduledFuture<?> future = timers.remove(roomId);
-
         if (future != null) {
-            future.cancel(true);
+            boolean canceled = future.cancel(true);
+            if (canceled) {
+                System.out.println("Timer for room " + roomId + " has been stopped.");
+            } else {
+                System.out.println("Failed to stop the timer for room " + roomId + ". It might already be executing.");
+            }
+        } else {
+            System.out.println("No active timer found for room " + roomId + ".");
         }
     }
 
     private void onTimerTick(String roomId) {
+        if (!timers.containsKey(roomId)) {
+            System.out.println("Timer for room " + roomId + " was already stopped. Skipping tick.");
+            return; // Exit early if the timer is no longer active
+        }
+
         try {
             GameRoom room = gameRoomRepository.findById(roomId)
                     .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
@@ -170,21 +213,27 @@ public class GameRoomService {
             if (room.isTimeout()) {
                 simpMessagingTemplate.convertAndSend(
                         "/topic/game/" + roomId + "/timeout",
-                        Map.of("winner", (room.getBlackTime() <= 0) ? "white":"black")
+                        Map.of("winner", (room.getBlackTime() <= 0) ? "white" : "black")
                 );
 
-                stopTimer(roomId);
-            } else {
-                simpMessagingTemplate.convertAndSend(
-                        "/topic/game/" + roomId + "/timer",
-                        Map.of("blackTime", room.getBlackTime(),
-                                "whiteTime", room.getWhiteTime())
-                );
+                stopTimer(roomId); // Stop the timer when the game ends
+                return;
             }
 
+            simpMessagingTemplate.convertAndSend(
+                    "/topic/game/" + roomId + "/timer",
+                    Map.of("blackTime", room.getBlackTime(),
+                            "whiteTime", room.getWhiteTime())
+            );
+
             gameRoomRepository.save(room);
+
+        } catch (RoomNotFoundException e) {
+            System.out.println("Room " + roomId + " no longer exists. Stopping the timer.");
+            stopTimer(roomId); // Stop the timer if the room is not found
         } catch (Exception e) {
-            stopTimer(roomId);
+            System.out.println("Error during timer tick for room " + roomId + ": " + e.getMessage());
+            stopTimer(roomId); // Stop the timer on unexpected errors
             e.printStackTrace();
         }
     }
@@ -243,28 +292,6 @@ public class GameRoomService {
         simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
                 new RoomEvent("UPDATE_BOARD", userId, gameRoomDTO)); // Broadcast the updated game state to all clients
     }
-
-//    public void handlePlayerDisconnect(String sessionId) {
-//        String roomId = sessionToRoomMap.get(sessionId);
-//        if (roomId == null) return;
-//
-//        GameRoom gameRoom = gameRoomRepository.findById(roomId).orElse(null);
-//        if (gameRoom == null) return;
-//
-//        // Remove the player and stop the timer if no players are left
-//        String userId = gameRoom.removePlayerBySession(sessionId); // Implement removePlayerBySession
-//        gameRoomRepository.save(gameRoom);
-//
-//        sessionToRoomMap.remove(sessionId);
-//
-//        if (gameRoom.getPlayers().isEmpty()) {
-//            stopTimer(roomId);
-//            gameRoomRepository.delete(gameRoom);
-//        } else {
-//            simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-//                    new RoomEvent("LEAVE", userId, convertToDTO(gameRoom)));
-//        }
-//    }
 
 
     private void sendErrorToUser(String userId, String errorCode, String errorMessage) {
