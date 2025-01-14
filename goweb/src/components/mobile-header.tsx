@@ -11,14 +11,14 @@ export function MobileHeader({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Detect the screen width to toggle mobile/desktop
+
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // Define the mobile breakpoint (768px or any value you prefer)
+      setIsMobile(window.innerWidth < 1200);
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial check
+    handleResize(); 
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -43,7 +43,7 @@ export function MobileHeader({ className = '' }: { className?: string }) {
           </SheetContent>
         </Sheet>
       ) : (
-        // Desktop sidebar is always visible on desktop
+        
         <Sidebar className="w-64 bg-sidebar border-r border-border px-4 py-6" />
       )}
       

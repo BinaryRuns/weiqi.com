@@ -1,0 +1,477 @@
+[33mcommit 213bf98f6e27139de81884e452c9d5c1a254c995[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: james <jameslin809@gmail.com>
+Date:   Sat Jan 11 17:53:19 2025 -0500
+
+    Temp Main Page
+
+[33mcommit ccf5dc2eb357126c7410246c99aecb2d577d4dd9[m[33m ([m[1;32mfeature/sound[m[33m)[m
+Merge: 394c999 0e9ac74
+Author: James Lin <jameslin809@gmail.com>
+Date:   Sat Jan 11 01:30:50 2025 -0500
+
+    Merge pull request #45 from BinaryRuns/feature/sound
+    
+    Feat: Sound
+
+[33mcommit 0e9ac742e86a5d4c3d51531bdb4ef1287d0795f5[m[33m ([m[1;31morigin/feature/sound[m[33m)[m
+Author: james <jameslin809@gmail.com>
+Date:   Sat Jan 11 01:22:55 2025 -0500
+
+    Feat: Sound
+
+[33mcommit 394c999586650310893f01a18952a2e4d3213094[m
+Merge: c23a84c 11f9e64
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Thu Jan 9 20:03:28 2025 -0500
+
+    Merge pull request #43 from BinaryRuns/revert-42-revert-41-feature/board-chat
+    
+    Revert "Revert "implemeted a chat feature""
+
+[33mcommit 11f9e640d20d8481f7626e76b1f1818226320e7e[m[33m ([m[1;31morigin/revert-42-revert-41-feature/board-chat[m[33m)[m
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Thu Jan 9 20:01:47 2025 -0500
+
+    Revert "Revert "implemeted a chat feature""
+
+[33mcommit c23a84c5bf8827f523ea1b226f5895777b1114d2[m
+Merge: 0b6b6f2 1b45e37
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Thu Jan 9 19:53:08 2025 -0500
+
+    Merge pull request #42 from BinaryRuns/revert-41-feature/board-chat
+    
+    Revert "implemeted a chat feature"
+
+[33mcommit 1b45e37de9bd75d0734e4b863e8db8eaee1903d5[m
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Thu Jan 9 19:52:38 2025 -0500
+
+    Revert "implemeted a chat feature"
+
+[33mcommit 0b6b6f2784a358b814684b1432830e841fb740db[m
+Merge: 8df1201 533b252
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Thu Jan 9 19:51:47 2025 -0500
+
+    Merge pull request #41 from BinaryRuns/feature/board-chat
+    
+    implemeted a chat feature
+
+[33mcommit 533b2525ca3232a14720e6fd32fc27d250f9b203[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Fri Jan 10 00:51:10 2025 +0000
+
+    implemeted a chat feature
+
+[33mcommit 8df12014e497f2c5c34844a77c3bd04f25c697e0[m
+Merge: af78b00 73bebe3
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Wed Jan 8 23:36:39 2025 -0500
+
+    Merge pull request #27 from ByteByteRun/feature/integrate-game-logic
+    
+    implemented game logic and rule
+
+[33mcommit 73bebe390a4820c796f4200cb784d177871e0c45[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Thu Jan 9 04:36:05 2025 +0000
+
+    implemented game logic and rule
+
+[33mcommit af78b00ba20e86a91216869f16158a8e983df385[m
+Merge: 5adf4ab d33885f
+Author: James Lin <jameslin809@gmail.com>
+Date:   Wed Jan 8 18:14:46 2025 -0500
+
+    Merge pull request #26 from ByteByteRun/feature/test
+    
+    Error: Sidebar Mobile Fixed
+
+[33mcommit d33885f79bcf3ec44a129785a3ed56d080062e94[m[33m ([m[1;31morigin/feature/test[m[33m, [m[1;32mfeature/test[m[33m)[m
+Author: james <jameslin809@gmail.com>
+Date:   Wed Jan 8 18:12:58 2025 -0500
+
+    Error: Sidebar Mobile Fixed
+
+[33mcommit 5adf4ab52720285e859ce45397c305bfb8f43381[m[33m ([m[1;32mgame/v1[m[33m)[m
+Merge: 34356a3 703c0f6
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Wed Jan 8 00:04:43 2025 -0500
+
+    Merge pull request #25 from ByteByteRun/feature/Auth-Changes
+    
+    Handle show avatar when log in and fixed expiration for refresh token
+
+[33mcommit 703c0f631b8105df7595f807c1ca7dfc5d2432b1[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Wed Jan 8 05:03:06 2025 +0000
+
+    Handle show avatar when log in and fixed expiration for refresh token
+
+[33mcommit 34356a328fb2a875c08a621716fdfd2f9b01d0a6[m
+Merge: 360b02e fad9162
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Tue Jan 7 22:48:19 2025 -0500
+
+    Merge pull request #24 from ByteByteRun/game/v1
+    
+    GameLogic Testing
+
+[33mcommit fad9162c7705f029528bd497aa1cd4978fbf0d0e[m[33m ([m[1;31morigin/game/v1[m[33m)[m
+Author: james <jameslin809@gmail.com>
+Date:   Tue Jan 7 22:02:23 2025 -0500
+
+    GameLogic Testing
+
+[33mcommit 360b02e7f3a400ee139b8127a29a7df5317d24fb[m
+Merge: 1b91a15 7fd2af4
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Tue Jan 7 16:39:51 2025 -0500
+
+    Merge pull request #22 from ByteByteRun/feature/game-room-part2
+    
+    fixed timer for board game
+
+[33mcommit 7fd2af4b5c21bba36e672c1628f08da1ed300f37[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Tue Jan 7 21:38:09 2025 +0000
+
+    fixed timer for board game
+
+[33mcommit 1b91a152c3aad0e33b0b07aaf979983a5a5683a9[m
+Merge: 7976629 a571ffd
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Sun Jan 5 21:56:14 2025 -0500
+
+    Merge pull request #21 from FinClassify/feature/game-room-part1
+    
+    Integrated websocket to game room an added necessary fixes
+
+[33mcommit a571ffd25aec7a67cc742861d977f47f56ae0a40[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Mon Jan 6 02:54:11 2025 +0000
+
+    Integrated websocket to game room an added necessary fixes
+
+[33mcommit 7976629e97c5ade346e7659f56c995c77e366cc7[m
+Merge: 1d4a4ba eedd663
+Author: James Lin <jameslin809@gmail.com>
+Date:   Fri Jan 3 18:33:45 2025 -0500
+
+    Merge pull request #20 from JamessLin/feature/play
+    
+    small adjustments
+
+[33mcommit eedd663dd6763fd3c590bf2dd74e260aa520c10a[m
+Author: james <jameslin809@gmail.com>
+Date:   Fri Jan 3 18:32:21 2025 -0500
+
+    Setup game page
+
+[33mcommit 7a7ea206da7c9f80db491d3f3a8cb18bc058f6db[m
+Author: james <jameslin809@gmail.com>
+Date:   Fri Jan 3 14:11:14 2025 -0500
+
+    test some components
+
+[33mcommit 1d4a4ba050b73c0351ec1478074c59070ba3a18b[m
+Merge: 468e10a aae67cb
+Author: James Lin <jameslin809@gmail.com>
+Date:   Fri Jan 3 00:10:05 2025 -0500
+
+    Merge pull request #19 from JamessLin/feature/play
+    
+    Fixed minor issues
+
+[33mcommit aae67cb9f92e3fe10b91fdaaa817bb403232f402[m
+Author: james <jameslin809@gmail.com>
+Date:   Fri Jan 3 00:08:48 2025 -0500
+
+    Fixed minor issues
+
+[33mcommit 468e10a9e255ccfe5cdcbc1b51377514dc9bd8d8[m
+Merge: 0a01f0a b105c8f
+Author: James Lin <jameslin809@gmail.com>
+Date:   Thu Jan 2 21:57:33 2025 -0500
+
+    Merge pull request #18 from JamessLin/feature/play
+    
+    Play page design
+
+[33mcommit b105c8f13c7193b2ac29eb3b4795a9de5e22322c[m[33m ([m[1;32mfeature/boardComponent[m[33m)[m
+Author: james <jameslin809@gmail.com>
+Date:   Thu Jan 2 21:25:31 2025 -0500
+
+    Play page design
+
+[33mcommit 0a01f0a259834a0b9cad22d86d50c114a3f7b873[m
+Merge: 84c300f 24f7ed3
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Thu Jan 2 16:01:14 2025 -0500
+
+    Merge pull request #17 from JamessLin/feature/websocket-redis-room
+    
+    added some ways to join, create, leave and message in game room
+
+[33mcommit 24f7ed342ec211ce63690dff2870e185a78cdea4[m[33m ([m[1;31morigin/feature/websocket-redis-room[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Thu Jan 2 21:00:13 2025 +0000
+
+    added some ways to join, create, leave and message in game room
+
+[33mcommit 84c300f0a8db654f76431f53f8bec526a1e6087d[m
+Merge: 7f3a1b3 0e188af
+Author: James Lin <jameslin809@gmail.com>
+Date:   Wed Jan 1 23:58:00 2025 -0500
+
+    Merge pull request #16 from JamessLin/feature/boardComponent
+    
+    Feature/board component
+
+[33mcommit 0e188af3d39fa5ec0861ab97d3a23d4ba3c08246[m[33m ([m[1;31morigin/feature/boardComponent[m[33m)[m
+Merge: ad7e592 7f3a1b3
+Author: james <jameslin809@gmail.com>
+Date:   Wed Jan 1 23:54:04 2025 -0500
+
+    Merge branch 'main' of https://github.com/JamessLin/weiqi.com into feature/boardComponent
+
+[33mcommit ad7e5927cf0c256666c8eb042ab05849338064ab[m
+Author: james <jameslin809@gmail.com>
+Date:   Wed Jan 1 23:53:29 2025 -0500
+
+    Testing
+
+[33mcommit 7f3a1b31e0a0d0fac5d2dd25907e047482f1ed40[m
+Merge: 2bc8bb3 9088957
+Author: James Lin <jameslin809@gmail.com>
+Date:   Wed Jan 1 16:45:56 2025 -0500
+
+    Merge pull request #15 from JamessLin/feature/boardComponent
+    
+    New Design of the board
+
+[33mcommit 90889576eb6fd46a97f78e497576cc1201fae8e5[m
+Author: james <jameslin809@gmail.com>
+Date:   Wed Jan 1 16:36:52 2025 -0500
+
+    New Design of the board
+
+[33mcommit 2bc8bb31643cf9fee742db3c284cd605efd5cb39[m
+Merge: e8c347e df1f8b5
+Author: James Lin <jameslin809@gmail.com>
+Date:   Tue Dec 31 18:25:58 2024 -0500
+
+    Merge pull request #14 from JamessLin/feature/major-frontend-changes
+    
+    Major frontend changes
+
+[33mcommit df1f8b5b99680633557b055e2d3ceaa5179ec47d[m[33m ([m[1;31morigin/feature/major-frontend-changes[m[33m, [m[1;32mfeature/major-frontend-changes[m[33m)[m
+Author: james <jameslin809@gmail.com>
+Date:   Tue Dec 31 18:05:33 2024 -0500
+
+    Major frontend changes
+
+[33mcommit e8c347ed181868dcc8e26432cb88260c46569f36[m
+Merge: af8274c 1f7f100
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Tue Dec 31 16:43:13 2024 -0500
+
+    Merge pull request #13 from JamessLin/feature/minor-fix
+    
+    minor fixes to prepare for frontend changes
+
+[33mcommit 1f7f100188ce9f763a85cbbc01db8ef149983036[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Tue Dec 31 21:42:53 2024 +0000
+
+    minor fixes to prepare for frontend changes
+
+[33mcommit af8274c93d2c83d354d4c74f08018ed0238b5e43[m
+Merge: a5cfcca 0c89f6c
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Tue Dec 31 15:52:09 2024 -0500
+
+    Merge pull request #12 from JamessLin/playground/websocket-research
+    
+    just testing out websockeyt
+
+[33mcommit 0c89f6c868181bb9328482f0b1be2bf454d4ed8a[m[33m ([m[1;31morigin/playground/websocket-research[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Tue Dec 31 20:11:23 2024 +0000
+
+    just testing out websockeyt
+
+[33mcommit a5cfccaa78c9a695ccd96987c553be995ddbe73d[m
+Merge: 42f1b62 977e268
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Mon Dec 30 17:41:22 2024 -0500
+
+    Merge pull request #11 from JamessLin/feature/adjust-login
+    
+    adjust login after database setup
+
+[33mcommit 977e268a5264755bd67d706545a4d041b9f0e2db[m[33m ([m[1;31morigin/feature/adjust-login[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Mon Dec 30 22:40:04 2024 +0000
+
+    adjust login after database setup
+
+[33mcommit 42f1b62a08389faad84400060910ae652da8c856[m
+Merge: 71e28a2 c21442a
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Mon Dec 30 15:33:40 2024 -0500
+
+    Merge pull request #10 from JamessLin/feature/registeration
+    
+    added register endpoint
+
+[33mcommit c21442a05a273c491a554f53add0c19b4914854a[m[33m ([m[1;31morigin/feature/registeration[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Mon Dec 30 20:32:58 2024 +0000
+
+    added register endpoint
+
+[33mcommit 71e28a2fc0bd290ec31758bb05e491f3457a6aa2[m
+Merge: f1ceb7b 40144e8
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Mon Dec 30 01:39:48 2024 -0500
+
+    Merge pull request #9 from JamessLin/feature/docker-hot-reload
+    
+    added hot reloading for both frontend and backend
+
+[33mcommit 40144e83a038f9121feea9dc3197769ed9d198a7[m[33m ([m[1;31morigin/feature/docker-hot-reload[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Mon Dec 30 06:38:11 2024 +0000
+
+    added hot reloading for both frontend and backend
+
+[33mcommit f1ceb7bc5e9c79c7bdd805e64ce8f8ab527ac7f3[m
+Merge: 43602ae 22407c6
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Sun Dec 29 11:49:55 2024 -0500
+
+    Merge pull request #8 from JamessLin/feature/docker-setup
+    
+    added docker and database
+
+[33mcommit 22407c61c8ee225debb2f76875624773893dfedc[m[33m ([m[1;31morigin/feature/docker-setup[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Sun Dec 29 16:49:19 2024 +0000
+
+    added docker and database
+
+[33mcommit 43602aeccfba39cdcf7ad45599e80c627c15865d[m
+Merge: 32ca2e6 3187494
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Sat Dec 28 20:21:32 2024 -0500
+
+    Merge pull request #7 from JamessLin/feature/jwt-setup-part3
+    
+    Fix some refresh JWT logic and config
+
+[33mcommit 3187494af4ec814892a32ee81d44c136d1e85d4a[m[33m ([m[1;31morigin/feature/jwt-setup-part3[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Sun Dec 29 01:20:51 2024 +0000
+
+    Fix some refresh JWT logic and config
+
+[33mcommit 32ca2e66b8b81e93dea4f8316f8ca12e6e02952c[m
+Merge: f76c983 f3d2174
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Wed Dec 25 00:36:33 2024 -0500
+
+    Merge pull request #6 from JamessLin/feature/setup-jwt-part-2
+    
+    Added configurations for JWT handling frontend and backend
+
+[33mcommit f3d21743eefebc87ac758d8e8dcb6236b7c3dd85[m[33m ([m[1;31morigin/feature/setup-jwt-part-2[m[33m)[m
+Author: lstsk <carsonlin713@gmail.com>
+Date:   Wed Dec 25 05:34:24 2024 +0000
+
+    Added configurations for JWT handling frontend and backend
+
+[33mcommit f76c983e096110738a82d56a0361d63fa318c757[m
+Author: james <jameslin809@gmail.com>
+Date:   Sun Dec 22 21:41:45 2024 -0500
+
+    double check
+
+[33mcommit 4f3408220a36e37c5d9eb39f955942814ffb9465[m
+Merge: 82eedc5 3b69053
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Sun Dec 22 20:25:34 2024 -0500
+
+    Merge pull request #5 from JamessLin/feature/jwt-setup
+    
+    setup some initial jwt
+
+[33mcommit 3b6905339fa33e5d2a8c6723332e01846ea5c056[m[33m ([m[1;31morigin/feature/jwt-setup[m[33m)[m
+Author: Lstsk <carsonlin713@gmail.com>
+Date:   Sun Dec 22 20:24:45 2024 -0500
+
+    setup some initial jwt
+
+[33mcommit 82eedc59b4d22cfd1c081838989731c3f9ba2ead[m
+Author: james <jameslin809@gmail.com>
+Date:   Sun Dec 22 18:32:26 2024 -0500
+
+    added new page
+
+[33mcommit 060a04d824565183db0ba56c8921c712d751028b[m
+Merge: 12ac2b9 77b5ad1
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Sun Dec 22 16:48:39 2024 -0500
+
+    Merge pull request #4 from JamessLin/bug/fix
+    
+    fix coloring issue
+
+[33mcommit 77b5ad1e76adf7557dcc4204a7eaef0bb58131e4[m[33m ([m[1;31morigin/bug/fix[m[33m)[m
+Author: Lstsk <carsonlin713@gmail.com>
+Date:   Sun Dec 22 16:46:37 2024 -0500
+
+    fix coloring issue
+
+[33mcommit 12ac2b98a447af2079718530b5f79b4d4f5598d5[m
+Merge: 457e263 db0215c
+Author: Carson Lin <94779681+Lstsk@users.noreply.github.com>
+Date:   Sun Dec 22 16:38:01 2024 -0500
+
+    Merge pull request #3 from JamessLin/feature/test
+    
+    test push
+
+[33mcommit db0215ca2eb97709d452ae4d1eec363f72c79596[m
+Author: Lstsk <carsonlin713@gmail.com>
+Date:   Sun Dec 22 16:36:37 2024 -0500
+
+    test push
+
+[33mcommit 457e2633022b787e8054bc75b8e37f0172a7ea82[m
+Merge: e6448e9 9d199f5
+Author: James Lin <jameslin809@gmail.com>
+Date:   Sat Dec 21 18:45:23 2024 -0500
+
+    Merge pull request #1 from JamessLin/feature/setup
+    
+    login + spring boot setup
+
+[33mcommit 9d199f59098a90777f966bc9896eb49f5e833069[m
+Author: Lstsk <carsonlin713@gmail.com>
+Date:   Sat Dec 21 17:58:50 2024 -0500
+
+    login + spring boot setup
+
+[33mcommit e6448e95fa652a75d2c223d609befc95d76e16f2[m
+Author: james <jameslin809@gmail.com>
+Date:   Fri Dec 20 14:01:43 2024 -0500
+
+    Updated Goals
+
+[33mcommit a9e2444e5a96c6f399070c9a86ff06c305f944cf[m
+Author: james <jameslin809@gmail.com>
+Date:   Fri Dec 20 13:51:18 2024 -0500
+
+    first commit
