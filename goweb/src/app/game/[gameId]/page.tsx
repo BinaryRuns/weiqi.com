@@ -12,7 +12,9 @@ import Timer from "@/components/play/board/timer";
 import { useToast } from "@/hooks/use-toast";
 import ChatSection from "@/components/play/board/ChatSection";
 import { ChatMessage, MessageType } from "@/types/ChatMessage";
-import GoSoundEffects from '@/components/GoBoard/GoSoundEffects';
+import GoSoundEffects from "@/components/GoBoard/GoSoundEffects";
+import { Button } from "@/components/ui/button";
+import GameControls from "@/components/play/board/GameControls";
 
 // types
 type BoardSize = 9 | 13 | 19;
@@ -48,6 +50,7 @@ export default function GamePage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [playSound, setPlaySound] = useState<string | null>(null);
+  const [resignMessage, setResignMessage] = useState<string | null>(null);
 
   // Retrieve user ID from Redux store
   const userId = useSelector((state: RootState) => state.auth.userId);
@@ -150,7 +153,7 @@ export default function GamePage() {
       `/topic/game/${params.gameId}/sound`,
       (message) => {
         const data = JSON.parse(message.body);
-        if (data.type === 'PLAY_SOUND') {
+        if (data.type === "PLAY_SOUND") {
           setPlaySound(data.color);
         }
       }
@@ -161,6 +164,18 @@ export default function GamePage() {
       (message) => {
         const errorData = JSON.parse(message.body);
         console.error("WebSocket Error:", errorData);
+      }
+    );
+    // Subscribe to resign message
+    const resignSubscription = stompClient.subscribe(
+      `/topic/game/${params.gameId}/resign`,
+      (message) => {
+        const data = JSON.parse(message.body);
+        console.log("Resign response from server:", data);
+
+        setResignMessage(
+          `${data.resigningPlayer} resigned. ${data.winner} wins!`
+        );
       }
     );
 
@@ -175,6 +190,7 @@ export default function GamePage() {
       errorSubscription.unsubscribe();
       gameTimer.unsubscribe();
       soundSubscription.unsubscribe();
+      resignSubscription.unsubscribe();
     };
   }, [stompClient, connected, params.gameId, userId, toast, userName]);
 
@@ -234,6 +250,17 @@ export default function GamePage() {
 
     setMessageInput("");
   };
+
+  const handleResign = () => {
+    if (!stompClient) return;
+
+    stompClient.publish({
+      destination: "/app/game.resign",
+      body: JSON.stringify({ roomId: params.gameId, userId }),
+    });
+  };
+
+  const handleDraw = () => {};
 
   // ----- Player Roles -----
   const currentUser = Array.from(gameState?.players || []).find(
@@ -304,7 +331,14 @@ export default function GamePage() {
       </div>
 
       <div className="w-full md:w-[500px] h-full p-6 overflow-y-auto">
-        <div className="bg-bigcard p-6 rounded-lg h-full">
+        <div className="bg-bigcard p-6 rounded-lg h-full flex flex-col">
+          {/* Resign Button */}
+          <GameControls handleDraw={handleDraw} handleResign={handleResign} />
+
+          {resignMessage && (
+            <div className="mt-4 text-red-500">{resignMessage}</div>
+          )}
+
           {/* Add game controls, chat, move history, etc. */}
           <ChatSection
             messages={messages}

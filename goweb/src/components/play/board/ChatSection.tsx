@@ -17,8 +17,6 @@ const ChatSection: React.FC<ChatSectionProps> = ({
   setMessageInput,
   sendMessage,
 }) => {
-  console.log(messages);
-
   return (
     <div className="flex flex-col h-full bg-bigcard rounded-lg shadow-md">
       {/* Header */}

@@ -18,8 +18,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/game")
 public class RoomController {
-    @Autowired
-    private GameRoomService gameRoomService;
+
+    private final GameRoomService gameRoomService;
+
+    public RoomController(GameRoomService gameRoomService) {
+        this.gameRoomService = gameRoomService;
+    }
 
     /**
      * Creates a new game room.
