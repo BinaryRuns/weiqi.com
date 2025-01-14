@@ -33,9 +33,7 @@ const AuthManager = () => {
     }
   }, [accessToken, dispatch]);
 
-  if (loading) {
-    return <div>Loading....</div>;
-  }
+
   // Don't render anything
   return null;
 };
