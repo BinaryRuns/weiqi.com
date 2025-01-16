@@ -9,6 +9,8 @@ import {
   TrophyIcon,
   LogInIcon,
   UserPlusIcon,
+  SettingsIcon,
+  LogOutIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +19,7 @@ import { NavItem } from "@/components/layout/nav-item";
 import Link from "next/link";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
+import { useState } from "react";
 
 const navItems = [
   { href: "/play", label: "Play", icon: GamepadIcon },
@@ -36,6 +39,16 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
   const { accessToken, userName } = useSelector(
     (state: RootState) => state.auth
   );
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const handleUserSectionClick = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const handleLogOut = () => {
+    // Implement logout logic here
+    console.log("User logged out");
+  };
 
   return (
     <div
@@ -65,15 +78,40 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
             </Button>
           </>
         ) : (
-          <div className="flex items-center space-x-3">
-            <Avatar>
-              <AvatarImage
-                src="https://example.com/user-avatar.jpg"
-                alt="User Avatar"
-              />
-              <AvatarFallback>UA</AvatarFallback>
-            </Avatar>
-            <span className="font-medium">{userName || "User"}</span>
+          <div className="relative">
+            <div
+              className="flex items-center space-x-3 cursor-pointer"
+              onClick={handleUserSectionClick}
+            >
+              <Avatar>
+                <AvatarImage
+                  src="https://example.com/user-avatar.jpg"
+                  alt="User Avatar"
+                />
+                <AvatarFallback>UA</AvatarFallback>
+              </Avatar>
+              <span className="font-medium">{userName || "User"}</span>
+            </div>
+            {isDropdownOpen && (
+              <div className="absolute bottom-full mb-2 p-3 w-48 bg-sidebar border border-border rounded-lg shadow-lg">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => console.log("Settings clicked")}
+                >
+                  <SettingsIcon className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={handleLogOut}
+                >
+                  <LogOutIcon className="w-4 h-4 mr-2" />
+                  Log Out
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
