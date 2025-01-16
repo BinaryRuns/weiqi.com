@@ -65,7 +65,7 @@ const ChatSection: React.FC<ChatSectionProps> = ({
             onChange={(e) => setMessageInput(e.target.value)}
           />
           <button
-            className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none"
+            className="ml-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none"
             onClick={sendMessage}
           >
             Send
