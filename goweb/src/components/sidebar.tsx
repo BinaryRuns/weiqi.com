@@ -62,7 +62,7 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
         ))}
       </nav>
       <div className={`space-y-3 ${isMobile ? 'p-4 mb-safe' : 'pt-6'} border-t border-border`}>
-        {!accessToken ? (
+        {accessToken ? (
           <>
             <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/login" className="gap-3">
@@ -93,7 +93,7 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
               <span className="font-medium">{userName || "User"}</span>
             </div>
             {isDropdownOpen && (
-              <div className="absolute bottom-full mb-2 p-3 w-48 bg-sidebar border border-border rounded-lg shadow-lg">
+              <div className="absolute bottom-full mb-2 p-3 w-48 bg-darkcard border border-border rounded-lg shadow-lg">
                 <Button
                   variant="ghost"
                   className="w-full justify-start"
@@ -104,7 +104,7 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
                 </Button>
                 <Button
                   variant="ghost"
-                  className="w-full justify-start"
+                  className="w-full mt-2 justify-start"
                   onClick={handleLogOut}
                 >
                   <LogOutIcon className="w-4 h-4 mr-2" />

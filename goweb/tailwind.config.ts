@@ -25,6 +25,7 @@ export default {
         foreground: 'hsl(var(--foreground))',
         bigcard: 'hsl(var(--bigcard))',
         sidebar: 'hsl(var(--sidebar))',
+        darkcard: 'hsl(var(--darkcard))',
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
