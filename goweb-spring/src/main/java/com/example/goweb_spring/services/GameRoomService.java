@@ -105,11 +105,6 @@ public class GameRoomService {
         // Notify all subscribers with the updated GameRoom object
         simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
                 new RoomEvent("INITIAL_STATE", userId, convertToDTO(gameRoom)));
-
-        // Start timer only if the room has reached a maximum capacity
-        if (gameRoom.isFull()) {
-            startTimer(roomId);
-        }
     }
 
     /**
@@ -264,7 +259,11 @@ public class GameRoomService {
         GameRoom gameRoom = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
 
-       
+        // Add check for minimum required players
+        if (gameRoom.getCurrentPlayers() < gameRoom.getMaxPlayers()) {
+            throw new IllegalStateException("Cannot place stones until all players have joined.");
+        }
+
         Player player = gameRoom.getPlayers().stream()
                 .filter(p -> p.getUserId().equals(userId))
                 .findFirst()
@@ -281,6 +280,11 @@ public class GameRoomService {
         );
 
         gameRoom.setStones(updatedStones); // Place move
+        
+        // Start timer on first move
+        if (!timers.containsKey(roomId)) {
+            startTimer(roomId);
+        }
         
         // Send sound notification before changing the turn
         sendSoundNotification(roomId, player.getColor());
@@ -325,7 +329,7 @@ public class GameRoomService {
                 } else if (cell == 2) {
                     strRow.add("white");
                 } else {
-                    strRow.add(null); // 0 indicates empty
+                    strRow.add(null); 
                 }
             }
             boardForFrontEnd.add(strRow);

@@ -38,6 +38,8 @@ public class GameRoom implements Serializable {
 
     private String currentPlayerColor; // black or white
 
+    private int moveCount = 0;
+
     public GameRoom(String roomId, String roomName, int maxPlayers, int boardSize, TimeControl timeControl) {
         this.roomId = roomId;
         this.roomName = roomName;
@@ -138,5 +140,13 @@ public class GameRoom implements Serializable {
     public void setStones(List<List<Integer>> updatedBoard) {
         stones = updatedBoard;
         serializeStones();
+    }
+
+    public int getMoveCount() {
+        return moveCount;
+    }
+
+    public void setMoveCount(int moveCount) {
+        this.moveCount = moveCount;
     }
 }

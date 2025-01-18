@@ -23,6 +23,7 @@ const mockPuzzles: Puzzle[] = [
   
 ];
 
+
 export default function PuzzlesPage() {
   const [filters, setFilters] = useState({
     difficulty: 'all',
