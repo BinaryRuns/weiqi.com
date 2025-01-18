@@ -17,7 +17,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "@/components/layout/logo";
 import { NavItem } from "@/components/layout/nav-item";
 import Link from "next/link";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { clearAccessToken } from "@/store/authSlice";
+import { useRouter } from "next/navigation";
 import { RootState } from "@/store/store";
 import { useState } from "react";
 
@@ -36,6 +38,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
+  const dispatch = useDispatch();
+  const router = useRouter();
   const { accessToken, userName } = useSelector(
     (state: RootState) => state.auth
   );
@@ -45,9 +49,23 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const handleLogOut = () => {
-    // Implement logout logic here
-    console.log("User logged out");
+  const handleLogOut = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        dispatch(clearAccessToken());
+        setIsDropdownOpen(false);
+        router.push("/login");
+      } else {
+        console.error("Logout failed");
+      }
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
   };
 
   return (
@@ -62,7 +80,7 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
         ))}
       </nav>
       <div className={`space-y-3 ${isMobile ? 'p-4 mb-safe' : 'pt-6'} border-t border-border`}>
-        {accessToken ? (
+        {!accessToken ? (
           <>
             <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/login" className="gap-3">

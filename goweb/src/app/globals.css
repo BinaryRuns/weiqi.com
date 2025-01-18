@@ -8,7 +8,7 @@
     --foreground: 0 0% 92%;      /* #EAEAEA */
     
     --sidebar: 0 0% 12%;          
-    --darkcard: 0 0% 5%;          /* #1A1A1A - Darkest, for sidebar */
+    --darkcard: 0 0% 10%;          /* #1A1A1A - Darkest, for sidebar */
     --bigcard: 0 0% 14%;         /* #1A1A1A - same as sidebar */
     --card: 0 0% 13%;           /* #212121 - Slightly lighter than background for cards */
     --card-foreground: 0 0% 92%;

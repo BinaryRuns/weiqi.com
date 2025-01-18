@@ -99,7 +99,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Remember me / Forget Password */}
+   
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <Checkbox size="md">Remember me</Checkbox>
@@ -119,14 +119,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* OR Divider */}
+
         <div className="flex items-center my-6">
           <hr className="flex-grow border-gray-600" />
           <span className="px-4 text-gray-400">OR</span>
           <hr className="flex-grow border-gray-600" />
         </div>
 
-        {/* Third-Party Login Buttons */}
         <div className="space-y-3">
           <Button
             className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
