@@ -1,11 +1,8 @@
 "use client";
 
-import { Input } from "@nextui-org/input";
-import { Button } from "@nextui-org/button";
 import { FcGoogle } from "react-icons/fc";
-import { FaApple } from "react-icons/fa";
+import { FaApple, FaGithub } from "react-icons/fa";
 import { FaFacebook } from "react-icons/fa";
-import { Checkbox } from "@nextui-org/checkbox";
 import { FaUser } from "react-icons/fa";
 import { FaLock } from "react-icons/fa";
 import React, { useState } from "react";
@@ -13,6 +10,10 @@ import { z } from "zod";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { setAccessToken } from "@/store/authSlice";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 const LoginSchema = z.object({
   username: z.string().email("Invalid email address"),
@@ -79,9 +80,7 @@ export default function LoginPage() {
             <Input
               name="username"
               placeholder="you@example.com"
-              startContent={<FaUser />}
-              size="lg"
-              type="email"
+              autoComplete="username"
               value={formData.username}
               onChange={handleChange}
             />
@@ -91,18 +90,17 @@ export default function LoginPage() {
               name="password"
               placeholder="Enter your password"
               type="password"
-              size="lg"
-              startContent={<FaLock />}
               className="w-full"
+              autoComplete="current-password"
               value={formData.password}
               onChange={handleChange}
             />
           </div>
 
-   
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <Checkbox size="md">Remember me</Checkbox>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="remember-me">Remember me</Checkbox>
+              <Label htmlFor="remember-me">Remember Me</Label>
             </div>
 
             <a href="/forgot-password" className="text-sm hover:underline">
@@ -119,7 +117,6 @@ export default function LoginPage() {
           </Button>
         </form>
 
-
         <div className="flex items-center my-6">
           <hr className="flex-grow border-gray-600" />
           <span className="px-4 text-gray-400">OR</span>
@@ -127,26 +124,17 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-3">
-          <Button
-            className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
-            size="lg"
-            startContent={<FaApple size={25} />}
-          >
+          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+            <FaApple className="w-6 h-6" />
             Continue with Apple
           </Button>
-          <Button
-            className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
-            size="lg"
-            startContent={<FcGoogle size={25} />}
-          >
-            Continue with Google
-          </Button>
-          <Button
-            className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
-            size="lg"
-            startContent={<FaFacebook size={25} />}
-          >
+          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+            <FaFacebook className="w-6 h-6" />
             Continue with Facebook
+          </Button>
+          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+            <FaGithub className="w-6 h-6" />
+            Continue with Google
           </Button>
         </div>
 

@@ -70,16 +70,24 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
 
   return (
     <div
-      className={`${!isMobile ? 'w-64 bg-sidebar border-r border-border px-4 py-6' : ''} 
-        flex flex-col ${className} ${isMobile ? 'h-[calc(100vh-4rem)]' : 'h-full'}`}
+      className={`${
+        !isMobile ? "w-64 bg-sidebar border-r border-border px-4 py-6" : ""
+      } 
+        flex flex-col ${className} ${
+        isMobile ? "h-[calc(100vh-4rem)]" : "h-full"
+      }`}
     >
       {!isMobile && <Logo />}
-      <nav className={`space-y-1 flex-1 ${isMobile ? 'px-2 py-4' : 'mt-8'}`}>
+      <nav className={`space-y-1 flex-1 ${isMobile ? "px-2 py-4" : "mt-8"}`}>
         {navItems.map((item) => (
           <NavItem key={item.href} {...item} />
         ))}
       </nav>
-      <div className={`space-y-3 ${isMobile ? 'p-4 mb-safe' : 'pt-6'} border-t border-border`}>
+      <div
+        className={`space-y-3 ${
+          isMobile ? "p-4 mb-safe" : "pt-6"
+        } border-t border-border`}
+      >
         {!accessToken ? (
           <>
             <Button asChild variant="outline" className="w-full justify-start">

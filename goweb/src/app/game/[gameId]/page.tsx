@@ -15,6 +15,7 @@ import { ChatMessage, MessageType } from "@/types/ChatMessage";
 import GoSoundEffects from "@/components/GoBoard/GoSoundEffects";
 import { Button } from "@/components/ui/button";
 import GameControls from "@/components/play/board/GameControls";
+import GameEndModal from "@/components/play/board/GameEndModal";
 
 // types
 type BoardSize = 9 | 13 | 19;
@@ -51,6 +52,7 @@ export default function GamePage() {
   const { toast } = useToast();
   const [playSound, setPlaySound] = useState<string | null>(null);
   const [resignMessage, setResignMessage] = useState<string | null>(null);
+  const [gameOver, setGameOver] = useState(false);
 
   // Retrieve user ID from Redux store
   const userId = useSelector((state: RootState) => state.auth.userId);
@@ -166,6 +168,7 @@ export default function GamePage() {
         console.error("WebSocket Error:", errorData);
       }
     );
+
     // Subscribe to resign message
     const resignSubscription = stompClient.subscribe(
       `/topic/game/${params.gameId}/resign`,
@@ -176,6 +179,7 @@ export default function GamePage() {
         setResignMessage(
           `${data.resigningPlayer} resigned. ${data.winner} wins!`
         );
+        setGameOver(true);
       }
     );
 
@@ -218,7 +222,7 @@ export default function GamePage() {
    * @returns
    */
   const handleStonePlacement = (position: { x: number; y: number }) => {
-    if (!gameState || !stompClient) return;
+    if (!gameState || !stompClient || gameOver) return;
 
     const { x, y } = position;
 
@@ -333,10 +337,20 @@ export default function GamePage() {
       <div className="w-full md:w-[500px] h-full p-6 overflow-y-auto">
         <div className="bg-bigcard p-6 rounded-lg h-full flex flex-col">
           {/* Resign Button */}
-          <GameControls handleDraw={handleDraw} handleResign={handleResign} />
+
+          <GameControls
+            handleDraw={handleDraw}
+            handleResign={handleResign}
+            handleRematch={() => {}}
+            gameOver={gameOver}
+          />
 
           {resignMessage && (
             <div className="mt-4 text-red-500">{resignMessage}</div>
+          )}
+
+          {gameOver && resignMessage && (
+            <GameEndModal message={resignMessage} onClose={() => {}} />
           )}
 
           {/* Add game controls, chat, move history, etc. */}
@@ -352,145 +366,3 @@ export default function GamePage() {
     </div>
   );
 }
-
-// ----- Subscribe to WebSocket Errors -----
-// useEffect(() => {
-//   if (!stompClient) return;
-
-//   const errorSubscription = stompClient.subscribe(
-//     "/user/queue/errors",
-//     (message) => {
-//       const errorData = JSON.parse(message.body);
-//       console.error("WebSocket Error:", errorData);
-
-//       toast({
-//         title: "Error",
-//         description: errorData.errorMessage,
-//         variant: "destructive",
-//       });
-//     }
-//   );
-
-//   return () => {
-//     errorSubscription.unsubscribe();
-//   };
-// }, [stompClient]);
-
-// Establish WebSocket connection when gameId and userId are available
-// useEffect(() => {
-//   if (!params.gameId) return;
-
-//   console.log("Initializing WebSocket connection...");
-//   console.log("Current userId:", userId);
-
-//   // Create the SockJS + STOMP client
-//   const sock = new SockJS(`http://localhost:8081/ws/game`);
-//   const client = new Client({
-//     webSocketFactory: () => sock,
-//     debug: (str) => console.log(str),
-//     onConnect: () => {
-//       console.log("Connected to WebSocket");
-
-//       // ----- Subscriptions -----
-//       // 1. Main game topic (for INITIAL_STATE, UPDATE_BOARD, JOIN, LEAVE, etc.)
-//       client.subscribe(`/topic/game/${params.gameId}`, (message) => {
-//         const data = JSON.parse(message.body);
-//         console.log("Received game message:", data);
-
-//         if (
-//           data.action === "INITIAL_STATE" ||
-//           data.action === "UPDATE_BOARD"
-//         ) {
-//           // If the server sends a serialized stones object, transform it
-//           if (data.gameRoom.stonesSerialized) {
-//             data.gameRoom.stones = JSON.parse(data.gameRoom.stonesSerialized);
-//           }
-//           setGameState(data.gameRoom);
-//           setLoading(false);
-//         } else if (data.action === "JOIN") {
-//           setGameState(data.gameRoom);
-//           setLoading(false);
-//           console.log(`${data.userId} joined the game.`);
-//         } else if (data.action === "LEAVE") {
-//           console.log(`${data.userId} left the game.`);
-//         }
-//       });
-
-//       // 2. Timer topic (for real-time clock updates)
-//       client.subscribe(`/topic/game/${params.gameId}/timer`, (message) => {
-//         const timerData = JSON.parse(message.body);
-
-//         // Update blackTime/whiteTime in our local game state
-//         setGameState((prevState) => {
-//           if (!prevState) return prevState;
-//           return {
-//             ...prevState,
-//             blackTime: timerData.blackTime,
-//             whiteTime: timerData.whiteTime,
-//           };
-//         });
-//       });
-
-//       // 2. Timeout Notiflications
-//       let timeoutSubscription = client.subscribe(
-//         `/topic/game/${params.gameId}/timeout`,
-//         (message) => {
-//           const timeoutData = JSON.parse(message.body);
-//           console.log("Received timeout message:", timeoutData);
-
-//           // Example: Display an alert or update state to show the winner
-//           alert(`Game over! Winner by timeout: ${timeoutData.winner}`);
-
-//           // Unsubscribe from further timeout notifications
-//           timeoutSubscription.unsubscribe();
-
-//           // Optionally, you could also stop listening to updates or mark the game as finished in your UI state
-//           setGameState((prevState) => {
-//             if (!prevState) return prevState;
-//             return {
-//               ...prevState,
-//               // Perhaps store the winner or mark the game as ended
-//             };
-//           });
-//         }
-//       );
-
-//       // ----- Publish Join Message -----
-//       client.publish({
-//         destination: "/app/game.join",
-//         body: JSON.stringify({ roomId: params.gameId, userId: userId }),
-//       });
-
-//       console.log("Sent join message:", {
-//         roomId: params.gameId,
-//         userId: userId,
-//       });
-//     },
-
-//     onDisconnect: () => {
-//       console.log("Disconnected from WebSocket");
-//     },
-//   });
-
-//   client.activate();
-//   setStompClient(client);
-
-//   // Cleanup: leave room and deactivate on unmount or browser tab close
-//   const handleLeave = () => {
-//     if (client && client.connected) {
-//       client.publish({
-//         destination: "/app/game.leave",
-//         body: JSON.stringify({ roomId: params.gameId, userId: userId }),
-//       });
-//       client.deactivate();
-//     }
-//   };
-
-//   window.addEventListener("beforeunload", handleLeave);
-
-//   return () => {
-//     handleLeave();
-//     client.deactivate();
-//     window.removeEventListener("beforeunload", handleLeave);
-//   };
-// }, [params.gameId, userId]);

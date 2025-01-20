@@ -5,34 +5,38 @@ import { RootState, store } from "@/store/store";
 import { useEffect, useState } from "react";
 import { setAccessToken, clearAccessToken } from "@/store/authSlice";
 import { refreshAccessToken } from "./AuthService";
+import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const AuthManager = () => {
   const dispatch = useDispatch();
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
-    const handleRefreshToken = async () => {
-      // TODO: Implement a loading state to prevent rendering protected routes prematurely
+    const isProtectedRoute = !["/login", "/register"].includes(pathname);
 
+    const handleRefreshToken = async () => {
       try {
         const data = await refreshAccessToken();
         dispatch(setAccessToken(data.accessToken));
       } catch (error) {
-        console.error("Failed to refresh token on load:", error);
+        console.log("Failed to refresh token on load:", error);
+        router.push("/login");
         dispatch(clearAccessToken());
       } finally {
         setLoading(false);
       }
     };
 
-    if (!accessToken) {
+    if (isProtectedRoute && !accessToken) {
       handleRefreshToken();
     } else {
       setLoading(false);
     }
-  }, [accessToken, dispatch]);
-
+  }, [accessToken, dispatch, pathname]);
 
   // Don't render anything
   return null;
