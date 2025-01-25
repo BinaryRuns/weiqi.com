@@ -4,6 +4,7 @@ export interface ChatMessage {
   content: string;
   roomId: string;
   type: MessageType;
+  timestamp: number;
 }
 
 export enum MessageType {
