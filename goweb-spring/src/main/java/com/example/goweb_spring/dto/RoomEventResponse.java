@@ -1,7 +1,6 @@
-package com.example.goweb_spring.model;
+package com.example.goweb_spring.dto;
 
 
-import com.example.goweb_spring.dto.GameRoomDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,8 +8,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RoomEvent {
+public class RoomEventResponse {
     private String action;
     private String userId;
-    private GameRoomDTO gameRoom;
+    private GameRoomResponse gameRoom;
 }

@@ -5,6 +5,10 @@ import { Board } from "@/components/GoBoard/Board";
 import PlayerCard from "@/components/play/board/playercard";
 import GameSetup from "@/components/play/board/gamesetup";
 import { useRouter } from "next/navigation";
+import { startWaiting, stopWaiting } from "@/store/waitingSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { useMatchmakingNotifications } from "@/hooks/useMatchmakingNotifications";
 
 type BoardSize = 9 | 13 | 19;
 
@@ -14,7 +18,11 @@ interface GameConfig {
 }
 
 export default function PlayPage() {
-  const router = useRouter();
+  useMatchmakingNotifications(); // Activate matchmaking listener
+
+  const dispatch = useDispatch();
+  const userId = useSelector((state: RootState) => state.auth.userId);
+  const userName = useSelector((state: RootState) => state.auth.userName);
 
   const [boardSize, setBoardSize] = useState<BoardSize>(19);
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
@@ -25,34 +33,45 @@ export default function PlayPage() {
 
   const handleGameSetup = (config: GameConfig) => {
     setGameConfig(config);
-    createGame(config);
+    joinMatchmakingQueue(config);
   };
 
-  const createGame = async (config: GameConfig) => {
+  // Map board size to enum value
+  const mapBoardSize = (size: number): string => {
+    const mapping: { [key: number]: string } = {
+      9: "NINE",
+      13: "THIRTEEN",
+      19: "NINETEEN",
+    };
+    return mapping[size] || "NINETEEN"; // default to "NINETEEN" if no match found
+  };
+
+  const joinMatchmakingQueue = async (config: GameConfig) => {
+    dispatch(startWaiting()); // Start waiting timer
+
     try {
-      const response = await fetch("/api/game/create", {
+      const response = await fetch("/api/matchmaking/join", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          roomName: `Game ${config.size}x${config.size}`,
-          maxPlayers: 2,
-          boardSize: config.size,
+          userId,
+          rating: 500,
+          boardSize: mapBoardSize(config.size),
           timeControl: config.timeControl.toUpperCase(),
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Game created successfully:", data);
-        // Redirect to the game page with the created game room ID
-        router.push(`/game/${data.roomId}`);
-      } else {
-        console.error("Failed to create game");
+      if (!response.ok) {
+        throw new Error("Failed to join matchmaking queue");
       }
+
+      const data = await response.text();
+      console.log("Successfully joined the queue:", data);
     } catch (error) {
-      console.error("Error creating game:", error);
+      console.error("Error joining matchmaking queue:", error);
+      dispatch(stopWaiting()); // Stop waiting timer on failure
     }
   };
 

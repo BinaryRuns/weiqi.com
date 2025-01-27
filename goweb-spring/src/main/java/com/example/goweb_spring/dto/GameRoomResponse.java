@@ -1,5 +1,6 @@
 package com.example.goweb_spring.dto;
 
+import com.example.goweb_spring.dto.enums.TimeControl;
 import com.example.goweb_spring.model.Player;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +10,7 @@ import java.util.Set;
 
 @Data
 @AllArgsConstructor
-public class GameRoomDTO {
+public class GameRoomResponse {
     private String roomId;
     private String roomName;
     private int maxPlayers;

@@ -1,6 +1,6 @@
 package com.example.goweb_spring.model;
 
-import com.example.goweb_spring.dto.TimeControl;
+import com.example.goweb_spring.dto.enums.TimeControl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +10,6 @@ import net.minidev.json.annotate.JsonIgnore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 
-import javax.annotation.PostConstruct;
 import java.io.Serializable;
 import java.util.*;
 
@@ -24,6 +23,7 @@ public class GameRoom implements Serializable {
     private int maxPlayers;
     private Set<Player> players = new HashSet<>();
     private int boardSize;
+    private Map<String, Boolean> playerReadyStatus = new HashMap<>();
 
     // Store the 2D board as a JSON string
     private String stonesJson;
@@ -40,8 +40,8 @@ public class GameRoom implements Serializable {
 
     private int moveCount = 0;
 
-    public GameRoom(String roomId, String roomName, int maxPlayers, int boardSize, TimeControl timeControl) {
-        this.roomId = roomId;
+    public GameRoom(String roomName, int maxPlayers, int boardSize, TimeControl timeControl) {
+        this.roomId = UUID.randomUUID().toString();
         this.roomName = roomName;
         this.maxPlayers = maxPlayers;
         this.boardSize = boardSize;
@@ -62,6 +62,7 @@ public class GameRoom implements Serializable {
         String color = !blackAssigned ? "black" : (!whiteAssigned ? "white" : null);
 
         players.add(new Player(userId, color, userName));
+        playerReadyStatus.put(userId, false);
         currentPlayers = players.size();
     }
 
@@ -140,6 +141,15 @@ public class GameRoom implements Serializable {
     public void setStones(List<List<Integer>> updatedBoard) {
         stones = updatedBoard;
         serializeStones();
+    }
+
+    public void markPlayerReady(String userId) {
+        playerReadyStatus.put(userId, true);
+    }
+
+    public boolean allPlayersReady() {
+        return playerReadyStatus.values().stream()
+                .allMatch(Boolean.TRUE::equals);
     }
 
     public int getMoveCount() {

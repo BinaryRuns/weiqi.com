@@ -1,4 +1,4 @@
-package com.example.goweb_spring.dto;
+package com.example.goweb_spring.dto.enums;
 
 
 import lombok.Getter;

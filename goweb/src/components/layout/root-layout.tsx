@@ -3,8 +3,8 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { Sidebar } from "@/components/sidebar";
 import { MobileHeader } from "@/components/mobile-header";
-import { ToastProvider, ToastViewport } from "../ui/toast";
 import { Toaster } from "../ui/toaster";
+import WaitingTimer from "../waitingTimer";
 
 export function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,6 +19,7 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col">
           <MobileHeader className="lg:hidden" />
           <main className="flex-1 overflow-y-auto">
+            <WaitingTimer />
             {children}
             <Toaster />
           </main>
