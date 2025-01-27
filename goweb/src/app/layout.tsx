@@ -2,9 +2,9 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { RootLayout } from "@/components/layout/root-layout";
+import { WebSocketProvider } from "@/contexts/WebSocketContext";
 
 import AuthProvider from "@/auth/AuthProvider";
-import { WebSocketProvider } from "@/contexts/WebSocketContext";
 
 const inter = Inter({ subsets: ["latin"] });
 

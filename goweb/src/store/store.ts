@@ -1,12 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 import waitingReducer from "./waitingSlice";
-import gameReducer from "./gameSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    game: gameReducer,
     waiting: waitingReducer,
   },
 });

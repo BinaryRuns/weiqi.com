@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { startWaiting, stopWaiting } from "@/store/waitingSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
+import { useMatchmakingNotifications } from "@/hooks/useMatchmakingNotifications";
 
 type BoardSize = 9 | 13 | 19;
 
@@ -17,10 +18,9 @@ interface GameConfig {
 }
 
 export default function PlayPage() {
-  const router = useRouter();
-  const dispatch = useDispatch();
+  useMatchmakingNotifications(); // Activate matchmaking listener
 
-  // Retrieve user ID from Redux store
+  const dispatch = useDispatch();
   const userId = useSelector((state: RootState) => state.auth.userId);
   const userName = useSelector((state: RootState) => state.auth.userName);
 

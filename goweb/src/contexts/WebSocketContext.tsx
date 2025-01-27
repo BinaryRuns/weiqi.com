@@ -1,169 +1,151 @@
-// contexts/WebSocketContext.tsx
 "use client";
 
-import {
+import React, {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
+  ReactNode,
+  useCallback,
 } from "react";
-import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { useAppDispatch } from "@/store/hooks";
-import { gameActions } from "@/store/gameSlice";
+import { Client, IMessage, StompSubscription, IFrame } from "@stomp/stompjs";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
 
+// Define the shape of your WebSocket context
 type WebSocketContextType = {
-  connect: (gameId: string, userId: string) => void;
-  subscribe: (
-    destination: string,
-    callback: (message: IMessage) => void
-  ) => () => void;
-  sendMessage: <T>(destination: string, body: T) => void;
   isConnected: boolean;
-  error: string | null;
+  subscribe: <T>(
+    destination: string,
+    callback: (data: T) => void
+  ) => StompSubscription | null;
+  send: (destination: string, body: any) => void;
 };
 
-const WebSocketContext = createContext<WebSocketContextType | null>(null);
+const WebSocketContext = createContext<WebSocketContextType | undefined>(
+  undefined
+);
 
-export const WebSocketProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const dispatch = useAppDispatch();
-  const client = useRef<Client | null>(null);
-  const subscriptions = useRef<Map<string, StompSubscription>>(new Map());
+// WebSocketProvider component
+export function WebSocketProvider({ children }: { children: ReactNode }) {
+  const clientRef = useRef<Client | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const reconnectAttempts = useRef(0);
-  const currentGameId = useRef<string | null>(null);
+  const userId = useSelector((state: RootState) => state.auth.userId);
 
-  const handleSystemMessage = (message: IMessage) => {
-    try {
-      const payload = JSON.parse(message.body);
-      switch (payload.type) {
-        case "ERROR":
-          dispatch(gameActions.setGameError(payload.message));
-          break;
-        case "GAME_EVENT":
-          dispatch(gameActions.setGameStatus("playing"));
-          break;
-      }
-    } catch (err) {
-      console.error("Error processing system message:", err);
+  // Initialize and configure the STOMP client
+  const connect = useCallback(() => {
+    if (!userId) {
+      console.warn("No access token - skipping WebSocket connection");
+      return;
     }
-  };
 
-  const connect = (gameId: string, userId: string) => {
-    if (client.current?.active) return;
+    if (clientRef.current && clientRef.current.active) {
+      console.warn("WebSocket is already connected.");
+      return;
+    }
 
-    console.log("Connecting to game", gameId);
-
-    currentGameId.current = gameId;
-    setError(null);
-
-    client.current = new Client({
-      webSocketFactory: () => new SockJS(`http://localhost:8081/ws/`),
+    const client = new Client({
+      webSocketFactory: () =>
+        new SockJS(`http://localhost:8081/ws?userId=${userId}`),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-      debug: (str) => console.debug("[WS]", str),
+      debug: (msg: string) => {
+        console.log("[WebSocket Debug]", msg);
+      },
+      onConnect: () => {
+        console.log("Connected to WebSocket");
+        setIsConnected(true);
+      },
+      onDisconnect: () => {
+        console.log("Disconnected from WebSocket");
+        setIsConnected(false);
+      },
+      onStompError: (frame: IFrame) => {
+        console.error("WebSocket encountered an error:", frame);
+      },
     });
 
-    client.current.onConnect = () => {
-      setIsConnected(true);
-      reconnectAttempts.current = 0;
+    client.activate();
+    clientRef.current = client;
+  }, [userId]); // Recreate when accessToken changes
 
-      // Restore previous subscriptions
-      subscriptions.current.forEach((_, destination) => {
-        const sub = client.current!.subscribe(destination, handleSystemMessage);
-        subscriptions.current.set(destination, sub);
-      });
-
-      // Join game room
-      sendMessage("/app/game.join", { gameId, userId });
-    };
-
-    client.current.onStompError = (frame) => {
-      setError(frame.headers.message || "WebSocket connection error");
-    };
-
-    client.current.onWebSocketClose = () => {
+  // Disconnect the STOMP client
+  const disconnect = useCallback(() => {
+    if (clientRef.current) {
+      clientRef.current.deactivate();
+      clientRef.current = null;
       setIsConnected(false);
-      if (reconnectAttempts.current < 5) {
-        const delay = Math.min(
-          30000,
-          1000 * Math.pow(2, reconnectAttempts.current)
-        );
-        setTimeout(() => connect(gameId, userId), delay);
-        reconnectAttempts.current++;
-      }
-    };
+      console.log("WebSocket connection closed.");
+    }
+  }, []); // Empty dependency array - never changes
 
-    client.current.activate();
-  };
-
-  const subscribe = (
+  // Subscribe to a destination
+  const subscribe = <T,>(
     destination: string,
-    callback: (message: IMessage) => void
-  ) => {
-    if (!client.current?.connected) {
-      console.error("Cannot subscribe - not connected");
-      return () => {};
+    callback: (data: T) => void
+  ): StompSubscription | null => {
+    if (!clientRef.current || !clientRef.current.connected) {
+      console.warn("WebSocket is not connected. Unable to subscribe.");
+      return null;
     }
 
-    const subscription = client.current.subscribe(destination, callback);
-    subscriptions.current.set(destination, subscription);
+    return clientRef.current.subscribe(destination, (message: IMessage) => {
+      console.log("Received message:", JSON.parse(message.body));
 
-    return () => {
-      subscription.unsubscribe();
-      subscriptions.current.delete(destination);
-    };
-  };
+      if (message.body) {
+        try {
+          const data: T = JSON.parse(message.body);
 
-  const sendMessage = <T,>(destination: string, body: T) => {
-    if (client.current?.connected) {
-      client.current.publish({
-        destination,
-        body: JSON.stringify(body),
-      });
-    } else {
-      console.error("Cannot send message - not connected");
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (client.current?.connected) {
-        client.current.deactivate();
+          console.log(data);
+          callback(data);
+        } catch (error) {
+          console.error("Failed to parse message body:", error);
+        }
       }
-    };
-  }, []);
+    });
+  };
 
-  const contextValue = useMemo(
-    () => ({
-      connect,
-      subscribe,
-      sendMessage,
-      isConnected,
-      error,
-    }),
-    [isConnected, error]
-  );
+  // Send a message to a destination
+  const send = (destination: string, body: any) => {
+    if (!clientRef.current || !clientRef.current.connected) {
+      console.warn("WebSocket is not connected. Unable to send message.");
+      return;
+    }
+
+    clientRef.current.publish({
+      destination,
+      body: JSON.stringify(body),
+    });
+  };
+
+  // 2. Add cleanup to useEffect
+  useEffect(() => {
+    if (userId) {
+      connect();
+    } else {
+      disconnect();
+    }
+
+    return () => {
+      disconnect();
+    };
+  }, [userId, connect, disconnect]); // Now stable with memoized disconnect
 
   return (
-    <WebSocketContext.Provider value={contextValue}>
+    <WebSocketContext.Provider value={{ isConnected, subscribe, send }}>
       {children}
     </WebSocketContext.Provider>
   );
-};
+}
 
-export const useWebSocket = () => {
+// Custom hook to use the WebSocket context
+export const useWebSocket = (): WebSocketContextType => {
   const context = useContext(WebSocketContext);
-  if (!context) {
-    throw new Error("useWebSocket must be used within WebSocketProvider");
+  if (context === undefined) {
+    throw new Error("useWebSocket must be used within a WebSocketProvider");
   }
   return context;
 };

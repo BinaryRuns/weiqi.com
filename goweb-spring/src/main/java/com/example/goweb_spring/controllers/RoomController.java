@@ -25,21 +25,6 @@ public class RoomController {
         this.gameRoomService = gameRoomService;
     }
 
-    /**
-     * Creates a new game room.
-     *
-     * @param request The request body containing room details.
-     * @return The created GameRoom.
-     */
-    @PostMapping("/create")
-    public ResponseEntity<GameRoom> createRoom(@RequestBody CreateRoomRequest request) {
-        GameRoom gameRoom = gameRoomService.createRoom(
-                request.getRoomName(),
-                request.getMaxPlayers(),
-                request.getBoardSize(),
-                request.getTimeControl());
-        return ResponseEntity.ok(gameRoom);
-    }
 
     /**
      * Retrieves all available game rooms.

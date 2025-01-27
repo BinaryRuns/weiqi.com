@@ -1,55 +1,62 @@
 package com.example.goweb_spring.services;
 
 
-import com.example.goweb_spring.dto.ErrorMessage;
-import com.example.goweb_spring.dto.GameRoomDTO;
-import com.example.goweb_spring.dto.TimeControl;
+import com.example.goweb_spring.dto.*;
+import com.example.goweb_spring.dto.enums.TimeControl;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.exceptions.RoomNotFoundException;
 import com.example.goweb_spring.exceptions.UserNotFoundException;
 import com.example.goweb_spring.model.GameRoom;
 import com.example.goweb_spring.model.Player;
-import com.example.goweb_spring.model.RoomEvent;
+import com.example.goweb_spring.dto.RoomEventResponse;
 import com.example.goweb_spring.repositories.GameRoomRepository;
 import com.example.goweb_spring.repositories.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
+
 import org.springframework.messaging.simp.user.SimpUserRegistry;
 
 @Service
 public class GameRoomService {
-    private final GameRoomRepository  gameRoomRepository;
+    private final GameRoomRepository gameRoomRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final UserRepository userRepository;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
     private final Map<String, ScheduledFuture<?>> timers = new ConcurrentHashMap<>();
 
-    public GameRoomService(GameRoomRepository gameRoomRepository, SimpMessagingTemplate simpMessagingTemplate , UserRepository userRepository, SimpUserRegistry simpUserRegistry) {
+    public GameRoomService(GameRoomRepository gameRoomRepository, SimpMessagingTemplate simpMessagingTemplate, UserRepository userRepository, SimpUserRegistry simpUserRegistry) {
         this.gameRoomRepository = gameRoomRepository;
         this.simpMessagingTemplate = simpMessagingTemplate;
         this.userRepository = userRepository;
     }
 
     /**
-     * Creates a new game room.
+     * Creates the game room
      *
-     * @param roomName    Optional name for the room.
-     * @param maxPlayers  Maximum number of players.
-     * @return The created GameRoom.
+     * @param boardSize
+     * @param timeControl
+     * @param playerIds
+     * @return
      */
-    public GameRoom createRoom(String roomName, int maxPlayers, int boardSize, TimeControl timeControl) {
-        String roomId = UUID.randomUUID().toString();
-        GameRoom gameRoom = new GameRoom(roomId, roomName, maxPlayers, boardSize, timeControl);
+    public GameRoom createGameSession(int boardSize, TimeControl timeControl, List<String> playerIds) {
+        GameRoom gameRoom = new GameRoom("New Game", 2, boardSize, timeControl);
 
-        System.out.println("Saving GameRoom: " + gameRoom);
-
+        // Persist the new game room before joining players
+        // This ensures joinRoom can find the room
         gameRoomRepository.save(gameRoom);
+
+        for (String playerId : playerIds) {
+            // Reuse joinRoom logic, but you may need to adapt it
+            // since joinRoom takes roomId and userId.
+            joinRoom(gameRoom.getRoomId(), playerId);
+        }
+
         return gameRoom;
     }
 
@@ -62,6 +69,28 @@ public class GameRoomService {
         return gameRoomRepository.findAll();
     }
 
+
+    /**
+     * Controller Endpoint to handle Player Ready Request
+     * @param roomId
+     * @param userId
+     */
+    public void handlePlayerReady(String roomId, String userId) {
+        GameRoom gameRoom = gameRoomRepository.findById(roomId).
+                orElseThrow(() -> new RoomNotFoundException(roomId));
+
+        // Mark player as ready
+        gameRoom.markPlayerReady(userId);
+        gameRoomRepository.save(gameRoom);
+
+        if (gameRoom.allPlayersReady()) {
+            simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
+                    new RoomEventResponse("INITIAL_STATE", "system", convertToDTO(gameRoom))
+            );
+        }
+    }
+
+
     /**
      * Allows a user to join a game room.
      *
@@ -69,7 +98,6 @@ public class GameRoomService {
      * @param userId The ID of the user joining.
      * @throws RuntimeException if the room is full or does not exist.
      */
-
     public void joinRoom(String roomId, String userId) {
 
         GameRoom gameRoom = gameRoomRepository.findById(roomId).orElse(null);
@@ -85,7 +113,7 @@ public class GameRoomService {
         if (gameRoom.getPlayers().stream().anyMatch(p -> p.getUserId().equals(userId))) {
             System.out.println("User is already in the room");
             simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-                    new RoomEvent("INITIAL_STATE", userId, convertToDTO(gameRoom)));
+                    new RoomEventResponse("INITIAL_STATE", userId, convertToDTO(gameRoom)));
             return;
         }
 
@@ -100,11 +128,6 @@ public class GameRoomService {
         // add to redis and save
         gameRoom.addPlayer(userId, user.getUsername());
         gameRoomRepository.save(gameRoom);
-
-
-        // Notify all subscribers with the updated GameRoom object
-        simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-                new RoomEvent("INITIAL_STATE", userId, convertToDTO(gameRoom)));
     }
 
     /**
@@ -114,7 +137,7 @@ public class GameRoomService {
      * @param userId The ID of the user leaving.
      * @throws RuntimeException if the room does not exist.
      */
-    public void leaveRoom(String roomId, String userId)  {
+    public void leaveRoom(String roomId, String userId) {
         GameRoom gameRoom = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
 
@@ -130,7 +153,7 @@ public class GameRoomService {
             System.out.println("GameRoom " + roomId + " deleted as no players remain.");
         } else {
             simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-                    new RoomEvent("LEAVE", userId, convertToDTO(gameRoom)));
+                    new RoomEventResponse("LEAVE", userId, convertToDTO(gameRoom)));
         }
     }
 
@@ -150,7 +173,7 @@ public class GameRoomService {
         // Notify clients about the resignation and the winner
         simpMessagingTemplate.convertAndSend(
                 "/topic/game/" + roomId + "/resign",
-                Map.of("resigningPlayer", resigningPlayer.getUserName(), "winner", winnerColor)
+                new ResignResponse(resigningPlayer.getUserName(), winnerColor)
         );
 
         // Stop the Timer and clean up the room
@@ -217,8 +240,7 @@ public class GameRoomService {
 
             simpMessagingTemplate.convertAndSend(
                     "/topic/game/" + roomId + "/timer",
-                    Map.of("blackTime", room.getBlackTime(),
-                            "whiteTime", room.getWhiteTime())
+                    new GameTimerResponse(room.getBlackTime(), room.getWhiteTime())
             );
 
             gameRoomRepository.save(room);
@@ -236,6 +258,7 @@ public class GameRoomService {
 
     /**
      * Gets details for room by id
+     *
      * @param roomId
      * @return
      * @throws Exception
@@ -245,16 +268,11 @@ public class GameRoomService {
                 .orElseThrow(() -> new RoomNotFoundException("Game room not found"));
     }
 
-
-
     private void sendSoundNotification(String roomId, String color) {
-        Map<String, String> soundMessage = new HashMap<>();
-        soundMessage.put("type", "PLAY_SOUND");
-        soundMessage.put("color", color);
-        simpMessagingTemplate.convertAndSend("/topic/game/" + roomId + "/sound", soundMessage);
+        simpMessagingTemplate.convertAndSend("/topic/game/" + roomId + "/sound",
+                new GameSoundResponse(color, "PLAY_SOUND"));
     }
 
-   
     public void placeStone(String roomId, String userId, int x, int y) {
         GameRoom gameRoom = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
@@ -274,27 +292,26 @@ public class GameRoomService {
             throw new IllegalStateException("It's not your turn.");
         }
 
-        // TODO: Validate board
         List<List<Integer>> updatedStones = GoGameLogic.placeMove(
                 gameRoom.getStones(), x, y, player.getColor()
         );
 
         gameRoom.setStones(updatedStones); // Place move
-        
+
         // Start timer on first move
         if (!timers.containsKey(roomId)) {
             startTimer(roomId);
         }
-        
+
         // Send sound notification before changing the turn
         sendSoundNotification(roomId, player.getColor());
-        
+
         gameRoom.setCurrentPlayerColor(player.getColor().equals("black") ? "white" : "black"); // Switch turn
         gameRoomRepository.save(gameRoom); // Save changes
 
-        GameRoomDTO gameRoomDTO = convertToDTO(gameRoom); // Convert to DTO for frontend
+        GameRoomResponse gameRoomDTO = convertToDTO(gameRoom); // Convert to DTO for frontend
         simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-                new RoomEvent("UPDATE_BOARD", userId, gameRoomDTO)); // Broadcast the updated game state to all clients
+                new RoomEventResponse("UPDATE_BOARD", userId, gameRoomDTO)); // Broadcast the updated game state to all clients
     }
 
 
@@ -315,10 +332,7 @@ public class GameRoomService {
      * @param gameRoom The GameRoom entity.
      * @return The GameRoomDTO.
      */
-    private GameRoomDTO convertToDTO(GameRoom gameRoom) {
-
-        System.out.println("Converting GameRoomDTO to DTO" + gameRoom.getStonesJson());
-        System.out.println("Converting GameRoomDTO to DTO" + gameRoom.getStones());
+    private GameRoomResponse convertToDTO(GameRoom gameRoom) {
 
         List<List<String>> boardForFrontEnd = new ArrayList<>();
         for (List<Integer> row : gameRoom.getStones()) {
@@ -329,13 +343,13 @@ public class GameRoomService {
                 } else if (cell == 2) {
                     strRow.add("white");
                 } else {
-                    strRow.add(null); 
+                    strRow.add(null);
                 }
             }
             boardForFrontEnd.add(strRow);
         }
 
-        return new GameRoomDTO(
+        return new GameRoomResponse(
                 gameRoom.getRoomId(),
                 gameRoom.getRoomName(),
                 gameRoom.getMaxPlayers(),

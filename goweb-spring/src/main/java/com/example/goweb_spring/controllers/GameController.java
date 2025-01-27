@@ -1,5 +1,6 @@
 package com.example.goweb_spring.controllers;
 
+import com.example.goweb_spring.dto.ReadyMessageRequest;
 import com.example.goweb_spring.model.ChatMessage;
 import com.example.goweb_spring.model.GameRoom;
 import com.example.goweb_spring.model.JoinRoomMessage;
@@ -42,13 +43,19 @@ public class GameController {
         }
     }
 
-    @MessageMapping("/game.leave")
-    public void leaveRoom(@Payload JoinRoomMessage leaveRoomMessage) {
-        try {
-             gameRoomService.leaveRoom(leaveRoomMessage.getRoomId(), leaveRoomMessage.getUserId());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
+    /**
+     * Handles Player Ready Request
+     * @param messageRequest
+     */
+    @MessageMapping("/game.ready")
+    public void handlePlayerReady(ReadyMessageRequest messageRequest) {
+        String roomId = messageRequest.getRoomId();
+        String userId = messageRequest.getUserId();
+
+
+        // handle player ready
+        gameRoomService.handlePlayerReady(roomId, userId);
     }
 
     /**
