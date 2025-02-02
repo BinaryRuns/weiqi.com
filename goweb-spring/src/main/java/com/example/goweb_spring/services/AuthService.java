@@ -2,12 +2,21 @@ package com.example.goweb_spring.services;
 
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.entities.UserEntity;
+import com.example.goweb_spring.model.GoogleUser;
 import com.example.goweb_spring.repositories.UserRepository;
 import com.example.goweb_spring.utils.JwtUtil;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.parameters.P;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -15,6 +24,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtUtil jwtUtil;
+
+    private static final String CLIENT_ID = "532310787557-tqb0gnir6s3l7udsc2klrf4e86kjb9t7.apps.googleusercontent.com";
 
     public AuthService(UserRepository userRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
@@ -79,5 +90,27 @@ public class AuthService {
         String newRefreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUsername(), originalExpiration);
 
         return new TokenResponse(newAccessToken, newRefreshToken);
+    }
+
+    public TokenResponse loginOrRegisterGoogleUser(GoogleUser googleUser, HttpServletResponse response) {
+        Optional<UserEntity> optionalUser = userRepository.findByEmail(googleUser.getEmail());
+        UserEntity user;
+        if(optionalUser.isPresent()) {
+            user = optionalUser.get();
+        } else {
+            user = new UserEntity();
+            user.setEmail(googleUser.getEmail());
+            user.setUsername(googleUser.getName() != null ? googleUser.getName() : googleUser.getEmail());
+
+            // For social login, set a dummy password
+            user.setPasswordHash(UUID.randomUUID().toString());
+            user.setSkillLevel("Unknown");
+            user = userRepository.save(user);
+        }
+
+        String accessToken = jwtUtil.generateToken(user.getUserId(), user.getUsername());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUsername());
+
+        return new TokenResponse(accessToken, refreshToken);
     }
 }

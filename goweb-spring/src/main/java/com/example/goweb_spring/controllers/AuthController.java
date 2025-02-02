@@ -1,10 +1,14 @@
 package com.example.goweb_spring.controllers;
 
+import com.example.goweb_spring.dto.GoogleTokenRequest;
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.dto.User;
 import com.example.goweb_spring.entities.UserEntity;
+import com.example.goweb_spring.model.GoogleUser;
 import com.example.goweb_spring.services.AuthService;
+import com.example.goweb_spring.services.oauth.GoogleOAuthService;
 import com.example.goweb_spring.utils.JwtUtil;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -18,10 +22,12 @@ import java.util.Optional;
 public class AuthController {
     private final JwtUtil jwtUtil;
     private final AuthService authService;
+    private final GoogleOAuthService googleOAuthService;
 
-    public AuthController(JwtUtil jwtUtil,  AuthService authService) {
+    public AuthController(JwtUtil jwtUtil,  AuthService authService, GoogleOAuthService googleOAuthService) {
         this.jwtUtil = jwtUtil;
         this.authService = authService;
+        this.googleOAuthService = googleOAuthService;
     }
 
     @PostMapping("/login")
@@ -90,7 +96,6 @@ public class AuthController {
     }
 
 
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
@@ -105,4 +110,26 @@ public class AuthController {
                 .body("Logged out successfully");
     }
 
+
+    @PostMapping("/oauth")
+    public ResponseEntity<?> oauth(@RequestBody GoogleTokenRequest request, HttpServletResponse response) {
+        GoogleUser googleUser = googleOAuthService.verifyToken(request.getIdToken());
+        if (googleUser == null) {
+            return ResponseEntity.status(401).body("Invalid Google token");
+        }
+
+        TokenResponse tokenResponse = authService.loginOrRegisterGoogleUser(googleUser, response);
+
+        // Set the new refresh token in an HTTP-only cookie
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .path("/api/auth/refresh")
+                .maxAge(7 * 24 * 60 * 60) // 7 days
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(new TokenResponse(tokenResponse.getAccessToken(), null));
+    }
 }

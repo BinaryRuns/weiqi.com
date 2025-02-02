@@ -33,6 +33,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll() // Allow all websocket endpoints
                         .anyRequest().permitAll() // Secure all other endpoints
                 )
+
                 .addFilterBefore(jwtAuthenticationFilter,  UsernamePasswordAuthenticationFilter.class) // Add JWT filter
                 .httpBasic(httpBasic -> httpBasic.disable()) // Disable HTTP Basic login
                 .formLogin(formLogin -> formLogin.disable()); // Disable form-based login

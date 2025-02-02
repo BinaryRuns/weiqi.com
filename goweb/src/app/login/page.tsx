@@ -3,8 +3,6 @@
 import { FcGoogle } from "react-icons/fc";
 import { FaApple, FaGithub } from "react-icons/fa";
 import { FaFacebook } from "react-icons/fa";
-import { FaUser } from "react-icons/fa";
-import { FaLock } from "react-icons/fa";
 import React, { useState } from "react";
 import { z } from "zod";
 import { useDispatch } from "react-redux";
@@ -14,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { signIn } from "next-auth/react"; // Add this import
 
 const LoginSchema = z.object({
   username: z.string().email("Invalid email address"),
@@ -71,6 +70,18 @@ export default function LoginPage() {
     router.push("/");
   };
 
+  // Add OAuth handler
+  const handleOAuthLogin = async (provider: string) => {
+    try {
+      const result = await signIn(provider, { redirect: false });
+      if (result?.error) {
+        console.error("OAuth Error:", result.error);
+      }
+    } catch (error) {
+      console.error("OAuth Login Failed:", error);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-md p-8 rounded-lg shadow-md bg-[#1e1e1e] text-white">
@@ -124,15 +135,24 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-3">
-          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+          <Button
+            className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
+            onClick={() => handleOAuthLogin("apple")}
+          >
             <FaApple className="w-6 h-6" />
             Continue with Apple
           </Button>
-          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+          <Button
+            className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
+            onClick={() => handleOAuthLogin("facebook")}
+          >
             <FaFacebook className="w-6 h-6" />
             Continue with Facebook
           </Button>
-          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+          <Button
+            className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
+            onClick={() => handleOAuthLogin("google")}
+          >
             <FaGithub className="w-6 h-6" />
             Continue with Google
           </Button>
