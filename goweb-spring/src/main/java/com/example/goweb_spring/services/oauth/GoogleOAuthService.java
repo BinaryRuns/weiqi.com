@@ -1,6 +1,7 @@
 package com.example.goweb_spring.services.oauth;
 
 import com.example.goweb_spring.model.GoogleUser;
+import com.example.goweb_spring.model.ProviderUserInfo;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -15,7 +16,7 @@ public class GoogleOAuthService {
     // Replace with your actual Google Client ID
     private static final String CLIENT_ID = "532310787557-tqb0gnir6s3l7udsc2klrf4e86kjb9t7.apps.googleusercontent.com";
 
-    public GoogleUser verifyToken(String accessToken) {
+    public ProviderUserInfo verifyToken(String accessToken) {
         try {
             // Create a JSON factory for parsing the ID token
             GsonFactory gsonFactory = GsonFactory.getDefaultInstance();
@@ -38,7 +39,7 @@ public class GoogleOAuthService {
                 String name = (String) payload.get("name");
 
                 // Return a custom DTO with basic user info
-                return new GoogleUser(email, name);
+                return new ProviderUserInfo(email, name);
             } else {
                 // idToken is null if verification failed
                 return null;

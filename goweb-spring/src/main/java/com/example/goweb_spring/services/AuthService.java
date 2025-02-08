@@ -3,6 +3,7 @@ package com.example.goweb_spring.services;
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.model.GoogleUser;
+import com.example.goweb_spring.model.ProviderUserInfo;
 import com.example.goweb_spring.repositories.UserRepository;
 import com.example.goweb_spring.utils.JwtUtil;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
@@ -25,7 +26,6 @@ public class AuthService {
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtUtil jwtUtil;
 
-    private static final String CLIENT_ID = "532310787557-tqb0gnir6s3l7udsc2klrf4e86kjb9t7.apps.googleusercontent.com";
 
     public AuthService(UserRepository userRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
@@ -92,15 +92,15 @@ public class AuthService {
         return new TokenResponse(newAccessToken, newRefreshToken);
     }
 
-    public TokenResponse loginOrRegisterGoogleUser(GoogleUser googleUser, HttpServletResponse response) {
-        Optional<UserEntity> optionalUser = userRepository.findByEmail(googleUser.getEmail());
+    public TokenResponse loginOrRegisterGoogleUser(ProviderUserInfo userInfo) {
+        Optional<UserEntity> optionalUser = userRepository.findByEmail(userInfo.getEmail());
         UserEntity user;
         if(optionalUser.isPresent()) {
             user = optionalUser.get();
         } else {
             user = new UserEntity();
-            user.setEmail(googleUser.getEmail());
-            user.setUsername(googleUser.getName() != null ? googleUser.getName() : googleUser.getEmail());
+            user.setEmail(userInfo.getEmail());
+            user.setUsername(userInfo.getName() != null ? userInfo.getName() : userInfo.getEmail());
 
             // For social login, set a dummy password
             user.setPasswordHash(UUID.randomUUID().toString());

@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { signIn } from "next-auth/react"; // Add this import
 
 const LoginSchema = z.object({
   username: z.string().email("Invalid email address"),
@@ -71,14 +70,13 @@ export default function LoginPage() {
   };
 
   // Add OAuth handler
-  const handleOAuthLogin = async (provider: string) => {
-    try {
-      const result = await signIn(provider, { redirect: false });
-      if (result?.error) {
-        console.error("OAuth Error:", result.error);
-      }
-    } catch (error) {
-      console.error("OAuth Login Failed:", error);
+  const handleOAuthLogin = (provider: string) => {
+    if (provider === "google") {
+      // Redirect the browser to your backend OAuth endpoint.
+      // Adjust the URL if needed (for example, add the full domain if your backend is hosted separately).
+      window.location.href = "/api/auth/oauth/google";
+    } else {
+      alert("OAuth provider not implemented yet");
     }
   };
 
