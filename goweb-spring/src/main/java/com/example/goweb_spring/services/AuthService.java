@@ -2,35 +2,31 @@ package com.example.goweb_spring.services;
 
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.entities.UserEntity;
-import com.example.goweb_spring.model.GoogleUser;
+import com.example.goweb_spring.entities.UserOAuthEntity;
 import com.example.goweb_spring.model.ProviderUserInfo;
+import com.example.goweb_spring.repositories.UserOAuthRepository;
 import com.example.goweb_spring.repositories.UserRepository;
 import com.example.goweb_spring.utils.JwtUtil;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.core.parameters.P;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import com.google.api.client.json.gson.GsonFactory;
+import com.github.javafaker.Faker;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtUtil jwtUtil;
+    private final UserOAuthRepository userOAuthRepository;
 
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil) {
+
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil, UserOAuthRepository userOAuthRepository) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.jwtUtil = jwtUtil;
+        this.userOAuthRepository = userOAuthRepository;
     }
 
     public UserEntity registerUser(String username, String email, String password, String skillLevel) {
@@ -52,7 +48,6 @@ public class AuthService {
 
         return userRepository.save(user);
     }
-    
 
     public TokenResponse loginUser(String username, String password) {
 
@@ -92,25 +87,91 @@ public class AuthService {
         return new TokenResponse(newAccessToken, newRefreshToken);
     }
 
-    public TokenResponse loginOrRegisterGoogleUser(ProviderUserInfo userInfo) {
-        Optional<UserEntity> optionalUser = userRepository.findByEmail(userInfo.getEmail());
-        UserEntity user;
-        if(optionalUser.isPresent()) {
-            user = optionalUser.get();
-        } else {
-            user = new UserEntity();
-            user.setEmail(userInfo.getEmail());
-            user.setUsername(userInfo.getName() != null ? userInfo.getName() : userInfo.getEmail());
+    /**
+     * Logs in or registers a user via OAuth.
+     * It merges accounts based on the verified email.
+     *
+     * @param userInfo       The user info returned by the OAuth provider.
+     * @param provider       The provider name (e.g., "google", "github").
+     * @param providerUserId The unique ID provided by the OAuth provider.
+     * @return A TokenResponse containing the generated tokens.
+     */
+    public TokenResponse loginOrRegisterOAuthUser(ProviderUserInfo userInfo, String provider, String providerUserId) {
+        // Normalize the email
+        String normalizedEmail = userInfo.getEmail().trim().toLowerCase();
 
-            // For social login, set a dummy password
-            user.setPasswordHash(UUID.randomUUID().toString());
-            user.setSkillLevel("Unknown");
-            user = userRepository.save(user);
+        // 1. Check if there is an existing link for this provider and providerUserId.
+        Optional<UserOAuthEntity> optionalLink = userOAuthRepository.findByProviderAndProviderUserId(provider, providerUserId);
+        UserEntity user;
+
+        if (optionalLink.isPresent()) {
+            // The user has already linked with this provider.
+            user = optionalLink.get().getUser();
+        } else {
+            // 2. No linking record: find or create user by email.
+            user = findOrCreateUserByEmail(normalizedEmail, userInfo);
+            // 3. Create and save a linking record.
+            createUserOAuthLink(user, provider, providerUserId);
         }
 
+        // 4. Generate tokens for the user.
         String accessToken = jwtUtil.generateToken(user.getUserId(), user.getUsername());
         String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUsername());
-
         return new TokenResponse(accessToken, refreshToken);
+    }
+
+    /**
+     * Finds an existing user by normalized email or creates a new one.
+     */
+    private UserEntity findOrCreateUserByEmail(String normalizedEmail, ProviderUserInfo userInfo) {
+        Optional<UserEntity> optionalUser = userRepository.findByEmail(normalizedEmail);
+        if (optionalUser.isPresent()) {
+            return optionalUser.get();
+        } else {
+            UserEntity user = new UserEntity();
+            user.setEmail(normalizedEmail);
+            user.setUsername(generateUniqueUsername());
+            // Set a dummy password for OAuth users.
+            user.setPasswordHash(UUID.randomUUID().toString());
+            user.setSkillLevel("Unknown");
+            return userRepository.save(user);
+        }
+    }
+
+    /**
+     * Generates a unique username using Java Faker.
+     */
+    private String generateUniqueUsername() {
+        Faker faker = new Faker(new Locale("en", "US"));
+        String username;
+        int maxAttempts = 10; // Maximum number of attempts before fallback
+        int attempt = 0;
+
+        do {
+            String word1 = faker.hipster().word().replaceAll("\\s+", "");
+            String word2 = faker.hipster().word().replaceAll("\\s+", "");
+            int number = faker.number().numberBetween(0, 10000);
+            // Combine the words with hyphens and convert to lower case (optional)
+            username = String.format("%s-%s-%d", word1, word2, number).toLowerCase();
+            attempt++;
+        } while (userRepository.findByUsername(username).isPresent() && attempt < maxAttempts);
+
+        // Fallback: if still not unique after maxAttempts, generate a UUID-based username.
+        if (userRepository.findByUsername(username).isPresent()) {
+            username = "user-" + UUID.randomUUID().toString().substring(0, 8);
+        }
+
+        return username;
+    }
+
+    /**
+     * Creates and saves a linking record for the given user, provider, and provider user ID.
+     */
+    private void createUserOAuthLink(UserEntity user, String provider, String providerUserId) {
+        UserOAuthEntity link = new UserOAuthEntity();
+        link.setProvider(provider);
+        link.setProviderUserId(providerUserId);
+        link.setUser(user);
+        userOAuthRepository.save(link);
     }
 }

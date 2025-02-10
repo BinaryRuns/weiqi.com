@@ -11,4 +11,5 @@ import lombok.NoArgsConstructor;
 public class ProviderUserInfo {
     private String email;
     private String name;
+    private String providerUserId; // add this field
 }

@@ -1,25 +1,17 @@
 package com.example.goweb_spring.controllers;
 
-import com.example.goweb_spring.dto.GoogleTokenRequest;
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.dto.User;
 import com.example.goweb_spring.entities.UserEntity;
-import com.example.goweb_spring.model.GoogleUser;
 import com.example.goweb_spring.model.ProviderUserInfo;
 import com.example.goweb_spring.services.AuthService;
-import com.example.goweb_spring.services.oauth.GoogleOAuthService;
+import com.example.goweb_spring.services.oauth.OAuthProviderService;
 import com.example.goweb_spring.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -27,22 +19,16 @@ import java.util.Map;
 public class AuthController {
     private final JwtUtil jwtUtil;
     private final AuthService authService;
-    private final GoogleOAuthService googleOAuthService;
-
-    @Value("${oauth.google.clientId}")
-    private String googleClientId;
-
-    @Value("${oauth.google.clientSecret}")
-    private String googleClientSecret;
-
-    @Value("${oauth.google.redirectUri}")
-    private String googleRedirectUri;
 
 
-    public AuthController(JwtUtil jwtUtil,  AuthService authService, GoogleOAuthService googleOAuthService) {
+    // Inject all available OAuthProviderService beans in a Map (keyed by their name)
+    private final Map<String, OAuthProviderService> oauthProviders;
+
+
+    public AuthController(JwtUtil jwtUtil,  AuthService authService, Map<String, OAuthProviderService> oauthProviders) {
         this.jwtUtil = jwtUtil;
         this.authService = authService;
-        this.googleOAuthService = googleOAuthService;
+        this.oauthProviders = oauthProviders;
     }
 
     @PostMapping("/login")
@@ -126,45 +112,15 @@ public class AuthController {
     }
 
 
-    @PostMapping("/oauth")
-    public ResponseEntity<?> oauth(@RequestBody GoogleTokenRequest request, HttpServletResponse response) {
-
-        System.out.println("making a request");
-
-        ProviderUserInfo userInfo = googleOAuthService.verifyToken(request.getIdToken());
-        if (userInfo == null) {
-            return ResponseEntity.status(401).body("Invalid Google token");
-        }
-
-        TokenResponse tokenResponse = authService.loginOrRegisterGoogleUser(userInfo);
-
-//        // Set the new refresh token in an HTTP-only cookie
-//        ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
-//                .httpOnly(true)
-//                .secure(true)
-//                .path("/api/auth/refresh")
-//                .maxAge(7 * 24 * 60 * 60) // 7 days
-//                .build();
-
-        return ResponseEntity.ok()
-                .body(new TokenResponse(tokenResponse.getAccessToken(), tokenResponse.getRefreshToken()));
-    }
-
-
 
     @GetMapping("/oauth/{provider}")
     public void redirectToProvider(@PathVariable String provider, HttpServletResponse response) throws IOException {
-        String authUrl = "";
-        if ("google".equalsIgnoreCase(provider)) {
-            authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" +
-                    "client_id=" + googleClientId +
-                    "&redirect_uri=" + URLEncoder.encode(googleRedirectUri, StandardCharsets.UTF_8) +
-                    "&response_type=code" +
-                    "&scope=" + URLEncoder.encode("openid email profile", StandardCharsets.UTF_8);
+        OAuthProviderService service = oauthProviders.get(provider.toLowerCase());
+        if (service == null) {
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "Unsupported provider");
+            return;
         }
-        // Add more providers as needed
-
-        // Redirect the user to the OAuth provider’s login page
+        String authUrl = service.getAuthorizationUrl();
         response.sendRedirect(authUrl);
     }
 
@@ -175,20 +131,27 @@ public class AuthController {
             @RequestParam String code,
             HttpServletResponse response) throws IOException {
 
-        // Exchange the code for an access token with the provider
-        // (You can use RestTemplate, WebClient, or another HTTP client library)
-        String providerAccessToken = exchangeCodeForToken(provider, code);
 
-        // Use the access token (or an ID token, if provided) to fetch user info.
-        ProviderUserInfo userInfo = fetchUserInfo(provider, providerAccessToken);
+        OAuthProviderService service = oauthProviders.get(provider.toLowerCase());
+
+        if (service == null) {
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "Unsupported provider");
+            return;
+        }
+        // Exchange the code for an access token
+        String providerAccessToken = service.exchangeCodeForToken(code);
+        // Fetch the user info from the provider
+        ProviderUserInfo userInfo = service.fetchUserInfo(providerAccessToken);
 
         if (userInfo == null) {
             response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unable to fetch user info");
             return;
         }
 
+        System.out.println(userInfo);
+
         // At this point, you can find or create a local user based on the provider's user info.
-        TokenResponse tokenResponse = authService.loginOrRegisterGoogleUser(userInfo);
+        TokenResponse tokenResponse = authService.loginOrRegisterOAuthUser(userInfo, provider, userInfo.getProviderUserId());
 
         // Set refresh token in an HTTP‑only cookie
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
@@ -199,64 +162,8 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        
+
         String frontendRedirectUrl = "http://localhost:3000/auth/callback?accessToken=" + tokenResponse.getAccessToken();
         response.sendRedirect(frontendRedirectUrl);
-    }
-
-    // Helper methods for exchanging code and fetching user info
-    private String exchangeCodeForToken(String provider, String code) {
-        RestTemplate restTemplate = new RestTemplate();
-        String tokenEndpoint = "https://oauth2.googleapis.com/token";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        // Build the POST parameters.
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("code", code);
-        params.add("client_id", googleClientId);
-        params.add("client_secret", googleClientSecret);
-        params.add("redirect_uri", googleRedirectUri);
-        params.add("grant_type", "authorization_code");
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(tokenEndpoint, request, Map.class);
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Map<String, Object> body = response.getBody();
-                return (String) body.get("access_token");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private ProviderUserInfo fetchUserInfo(String provider, String providerAccessToken) {
-        RestTemplate restTemplate = new RestTemplate();
-        String userInfoEndpoint = "https://www.googleapis.com/oauth2/v2/userinfo";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(providerAccessToken);
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-        try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    userInfoEndpoint,
-                    HttpMethod.GET,
-                    entity,
-                    Map.class);
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Map<String, Object> body = response.getBody();
-                String email = (String) body.get("email");
-                String name = (String) body.get("name");
-                return new ProviderUserInfo(email, name);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 }
