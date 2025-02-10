@@ -3,15 +3,16 @@ package com.example.goweb_spring.controllers;
 import com.example.goweb_spring.dto.TokenResponse;
 import com.example.goweb_spring.dto.User;
 import com.example.goweb_spring.entities.UserEntity;
+import com.example.goweb_spring.model.ProviderUserInfo;
 import com.example.goweb_spring.services.AuthService;
+import com.example.goweb_spring.services.oauth.OAuthProviderService;
 import com.example.goweb_spring.utils.JwtUtil;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
-import org.springframework.http.ResponseEntity;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
+import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -19,9 +20,15 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final AuthService authService;
 
-    public AuthController(JwtUtil jwtUtil,  AuthService authService) {
+
+    // Inject all available OAuthProviderService beans in a Map (keyed by their name)
+    private final Map<String, OAuthProviderService> oauthProviders;
+
+
+    public AuthController(JwtUtil jwtUtil,  AuthService authService, Map<String, OAuthProviderService> oauthProviders) {
         this.jwtUtil = jwtUtil;
         this.authService = authService;
+        this.oauthProviders = oauthProviders;
     }
 
     @PostMapping("/login")
@@ -90,7 +97,6 @@ public class AuthController {
     }
 
 
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
@@ -105,4 +111,59 @@ public class AuthController {
                 .body("Logged out successfully");
     }
 
+
+
+    @GetMapping("/oauth/{provider}")
+    public void redirectToProvider(@PathVariable String provider, HttpServletResponse response) throws IOException {
+        OAuthProviderService service = oauthProviders.get(provider.toLowerCase());
+        if (service == null) {
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "Unsupported provider");
+            return;
+        }
+        String authUrl = service.getAuthorizationUrl();
+        response.sendRedirect(authUrl);
+    }
+
+
+    @GetMapping("/oauth/{provider}/callback")
+    public void handleProviderCallback(
+            @PathVariable String provider,
+            @RequestParam String code,
+            HttpServletResponse response) throws IOException {
+
+
+        OAuthProviderService service = oauthProviders.get(provider.toLowerCase());
+
+        if (service == null) {
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "Unsupported provider");
+            return;
+        }
+        // Exchange the code for an access token
+        String providerAccessToken = service.exchangeCodeForToken(code);
+        // Fetch the user info from the provider
+        ProviderUserInfo userInfo = service.fetchUserInfo(providerAccessToken);
+
+        if (userInfo == null) {
+            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unable to fetch user info");
+            return;
+        }
+
+        System.out.println(userInfo);
+
+        // At this point, you can find or create a local user based on the provider's user info.
+        TokenResponse tokenResponse = authService.loginOrRegisterOAuthUser(userInfo, provider, userInfo.getProviderUserId());
+
+        // Set refresh token in an HTTP‑only cookie
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
+                .httpOnly(true)
+                .secure(true) // use secure cookies in production
+                .path("/api/auth/refresh")
+                .maxAge(7 * 24 * 60 * 60)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+
+        String frontendRedirectUrl = "http://localhost:3000/auth/callback?accessToken=" + tokenResponse.getAccessToken();
+        response.sendRedirect(frontendRedirectUrl);
+    }
 }

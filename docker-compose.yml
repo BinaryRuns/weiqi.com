@@ -80,19 +80,6 @@ services:
     networks:
       - app-network
 
-  # WebSocket Test Service
-  websocket-test:
-    build:
-      context: ./websocket-test # Path to the directory with Dockerfile and index.html
-    container_name: websocket-test
-    restart: always
-    ports:
-      - "8083:8083" # Map the test container's port to 8083 on the host
-    depends_on:
-      - backend
-    networks:
-      - app-network
-
 volumes:
   postgres_data:
     driver: local

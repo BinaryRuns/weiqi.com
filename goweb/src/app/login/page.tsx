@@ -1,10 +1,8 @@
 "use client";
 
 import { FcGoogle } from "react-icons/fc";
-import { FaApple, FaGithub } from "react-icons/fa";
+import { FaApple, FaGithub, FaGoogle } from "react-icons/fa";
 import { FaFacebook } from "react-icons/fa";
-import { FaUser } from "react-icons/fa";
-import { FaLock } from "react-icons/fa";
 import React, { useState } from "react";
 import { z } from "zod";
 import { useDispatch } from "react-redux";
@@ -71,6 +69,29 @@ export default function LoginPage() {
     router.push("/");
   };
 
+  // Add OAuth handler
+  const handleOAuthLogin = (provider: string) => {
+    // Normalize provider to lowercase
+    const providerKey = provider.toLowerCase();
+
+    // Mapping object for OAuth endpoints.
+    // NEXT_PUBLIC_BACKEND_URL is optional; if not set, it defaults to an empty string.
+    const oauthEndpoints: { [key: string]: string } = {
+      google: `api/auth/oauth/google`,
+      github: `api/auth/oauth/github`,
+      facebook: `api/auth/oauth/facebook`,
+    };
+
+    const redirectUrl = oauthEndpoints[providerKey];
+
+    if (redirectUrl) {
+      // Optionally, you could set a loading state here if desired.
+      window.location.href = redirectUrl;
+    } else {
+      alert("OAuth provider not implemented yet");
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-md p-8 rounded-lg shadow-md bg-[#1e1e1e] text-white">
@@ -124,17 +145,26 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-3">
-          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
-            <FaApple className="w-6 h-6" />
-            Continue with Apple
+          <Button
+            className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
+            onClick={() => handleOAuthLogin("google")}
+          >
+            <FaGoogle className="w-6 h-6" />
+            Continue with Google
           </Button>
-          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+          {/* <Button
+            className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
+            onClick={() => handleOAuthLogin("facebook")}
+          >
             <FaFacebook className="w-6 h-6" />
             Continue with Facebook
-          </Button>
-          <Button className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3">
+          </Button> */}
+          <Button
+            className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
+            onClick={() => handleOAuthLogin("github")}
+          >
             <FaGithub className="w-6 h-6" />
-            Continue with Google
+            Continue with Github
           </Button>
         </div>
 

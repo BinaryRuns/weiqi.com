@@ -18,27 +18,30 @@ const AuthManager = () => {
   useEffect(() => {
     const isProtectedRoute = !["/login", "/register"].includes(pathname);
 
-    const handleRefreshToken = async () => {
+    const handleRefresh = async () => {
       try {
-        const data = await refreshAccessToken();
-        dispatch(setAccessToken(data.accessToken));
-      } catch (error) {
-        console.log("Failed to refresh token on load:", error);
-        router.push("/login");
-        dispatch(clearAccessToken());
-      } finally {
+        // Attempt to refresh the token if no access token is available.
+        const { accessToken } = await refreshAccessToken();
+        dispatch(setAccessToken(accessToken));
         setLoading(false);
+      } catch (error) {
+        dispatch(clearAccessToken());
+        router.push("/login");
       }
     };
 
-    if (isProtectedRoute && !accessToken) {
-      handleRefreshToken();
+    if (isProtectedRoute) {
+      if (!accessToken) {
+        // If no access token exists, attempt to refresh it.
+        handleRefresh();
+      } else {
+        // If an access token exists, assume the user is logged in.
+        setLoading(false);
+      }
     } else {
       setLoading(false);
     }
-  }, [accessToken, dispatch, pathname]);
-
-  // Don't render anything
+  }, [accessToken, pathname, dispatch, router]);
   return null;
 };
 

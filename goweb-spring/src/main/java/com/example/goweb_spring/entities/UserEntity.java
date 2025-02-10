@@ -26,7 +26,8 @@ public class UserEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    // To support oauth logins we made the passwordHash nullable
+    @Column(nullable = true)
     private String passwordHash;
 
     @Column(nullable = false, updatable = false)
