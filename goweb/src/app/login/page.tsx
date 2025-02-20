@@ -87,6 +87,7 @@ export default function LoginPage() {
     if (redirectUrl) {
       // Optionally, you could set a loading state here if desired.
       window.location.href = redirectUrl;
+      return;
     } else {
       alert("OAuth provider not implemented yet");
     }

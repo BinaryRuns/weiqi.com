@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-gramm="false">
       <body className={inter.className}>
         <AuthProvider>
           <WebSocketProvider>
