@@ -61,14 +61,31 @@ export default function LoginPage() {
         body: JSON.stringify(formData),
       });
 
+      // If the response is not ok, read the text and show a toast
+      if (!response.ok) {
+        await response.text(); // you could log the text if needed
+        toast({
+          title: "Login Failed",
+          description: "Please check your credentials and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       let data;
       try {
         data = await response.json();
       } catch (jsonError) {
-        throw new Error("Invalid response format. Please try again later.");
+        toast({
+          title: "Login Failed",
+          description: "Please check your credentials and try again.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      if (!response.ok || !data.accessToken) {
+      // Check if accessToken exists in the data
+      if (!data.accessToken) {
         toast({
           title: "Login Failed",
           description: data.message || "Please check your credentials and try again.",
@@ -82,15 +99,17 @@ export default function LoginPage() {
         description: "You are being redirected to the home page.",
       });
 
-      const accessToken = data.accessToken;
-      dispatch(setAccessToken(accessToken));
+      dispatch(setAccessToken(data.accessToken));
+
+      // Redirect to home page after a short delay to allow toast display
       setTimeout(() => {
         router.push("/");
       }, 1000);
     } catch (error: any) {
+      // Handle any other errors
       toast({
         title: "Error",
-        description: error.message || "An unexpected error occurred.",
+        description: "Please check your credentials and try again.",
         variant: "destructive",
       });
       console.error("Login error:", error);
@@ -99,9 +118,7 @@ export default function LoginPage() {
 
   // OAuth handler
   const handleOAuthLogin = (provider: string) => {
-    // Normalize provider to lowercase
     const providerKey = provider.toLowerCase();
-    // Mapping object for OAuth endpoints.
     const oauthEndpoints: { [key: string]: string } = {
       google: `api/auth/oauth/google`,
       github: `api/auth/oauth/github`,
@@ -119,7 +136,6 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* Render the Toaster component to show toast notifications */}
       <Toaster />
       <div className="flex min-h-screen items-center justify-center">
         <div className="w-full max-w-md p-8 rounded-lg shadow-md bg-[#1e1e1e] text-white">
