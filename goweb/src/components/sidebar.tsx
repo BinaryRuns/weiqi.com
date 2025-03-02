@@ -116,7 +116,8 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
                 />
                 <AvatarFallback>UA</AvatarFallback>
               </Avatar>
-              <span className="font-medium">{userName || "User"}</span>
+              <span className="font-medium truncate overflow-hidden whitespace-nowrap">{userName || "User"}</span>
+
             </div>
             {isDropdownOpen && (
               <div className="absolute bottom-full mb-2 p-3 w-48 bg-darkcard border border-border rounded-lg shadow-lg">

@@ -5,7 +5,7 @@ import { Board } from '../components/GoBoard/Board'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BoardSize } from '@/components/GoBoard/types'
-import { famousGame3 } from '@/lib/famousGame'
+import { famousGame1 } from '@/lib/famousGame'
 
 export default function Home() {
   const boardSize: BoardSize = 19
@@ -17,7 +17,7 @@ export default function Home() {
         {/* Main section */}
         <div className="flex flex-col md:flex-row items-start justify-center gap-8 py-8">
           <div className="w-full max-w-xl">
-            <Board size={boardSize} stones={famousGame3[famousGame3.length - 1]} />
+            <Board size={boardSize} stones={famousGame1[famousGame1.length - 1]} />
           </div>
           
           <div className="w-full max-w-md space-y-6">
