@@ -2,7 +2,6 @@ package com.example.goweb_spring.controllers;
 
 
 import com.example.goweb_spring.dto.UserSettingsDto;
-import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.services.UserSettingsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

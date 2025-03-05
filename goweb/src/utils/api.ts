@@ -1,6 +1,5 @@
 import { store } from "@/store/store";
 import { setAccessToken, clearAccessToken } from "@/store/authSlice";
-import { useRouter } from "next/navigation";
 
 export const fetchWithAuth = async (
   url: string,

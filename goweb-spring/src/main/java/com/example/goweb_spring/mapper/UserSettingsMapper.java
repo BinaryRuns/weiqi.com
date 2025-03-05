@@ -9,8 +9,6 @@ import org.mapstruct.factory.Mappers;
 
 @Mapper(componentModel = "spring")
 public interface UserSettingsMapper {
-    UserSettingsMapper INSTANCE = Mappers.getMapper(UserSettingsMapper.class);
-
     // Map username/email from nested UserEntity
     @Mapping(source = "user.username", target = "username") // Requires Lombok getters
     @Mapping(source = "user.email", target = "email")

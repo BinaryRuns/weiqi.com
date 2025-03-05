@@ -25,6 +25,7 @@ public class UserSettingsService {
                                UserRepository userRepository,
                                BCryptPasswordEncoder passwordEncoder,
                                UserSettingsMapper userSettingsMapper) {
+
         this.userSettingsRepository = userSettingsRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -35,7 +36,7 @@ public class UserSettingsService {
      * Retrieves the user settings as a DTO for the given user.
      * The mapper pulls core user fields (username, email) from the related UserEntity.
      *
-     * @param user the UserEntity
+     * @param userId the UserEntity
      * @return a DTO containing the settings
      */
     public UserSettingsDto getSettingsForUser(UUID userId) {

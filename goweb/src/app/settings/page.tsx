@@ -1,312 +1,218 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { fetchUserSettings } from "./api/get-user-settings";
+import { updateUserSettings } from "./api/update-user-settings";
 
-export default function SettingsPage() {
+import ProfileSettings from "./components/ProfileSettings";
+import GamePreferences from "./components/GamePreferences";
+import NotificationSettings from "./components/NotiflicationSettings";
+import MatchmakingSettings from "./components/MatchmakingSettings";
+import DisplaySettings from "./components/DisplaySettings";
+import PrivacySettings from "./components/PrivacySettings";
+import AdvancedSettings from "./components/AdvancedSettings";
+import toast from "react-hot-toast";
+
+export interface UserSettingsDto {
+  // Profile & Account
+  username: string;
+  email: string;
+  password: string;
+  // UserSettingsEntity
+  avatarUrl: string;
+  bio: string;
+  // Game Preferences
+  boardTheme: string;
+  stoneTheme: string;
+  soundEffects: boolean;
+  timeControl: string;
+  aiAssistance: boolean;
+  // Notification Settings
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  inAppNotifications: boolean;
+  // Matchmaking Settings
+  displayRatings: boolean;
+  matchmakingFilters: string;
+  // Display & Accessibility Settings
+  theme: string;
+  fontSize: string;
+  accessibilityOptions: string;
+  language: string;
+  timezone: string;
+  // Privacy & Security Settings
+  twoFactor: boolean;
+  loginAlerts: boolean;
+  blockedUsers: string;
+  // Advanced Settings
+  gameHistory: string;
+  apiKey: string;
+  betaFeatures: boolean;
+}
+
+const SettingsPage: React.FC = () => {
+  const userId = useSelector((state: RootState) => state.auth.userId);
+  const [settings, setSettings] = useState<UserSettingsDto | null>(null);
+  const [originalSettings, setOriginalSettings] =
+    useState<UserSettingsDto | null>(null);
+  const [updateMessage, setUpdateMessage] = useState<string>("");
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const loadSettings = async () => {
+      try {
+        const settingsData = await fetchUserSettings(userId);
+        if (settingsData) {
+          setSettings(settingsData);
+          setOriginalSettings(settingsData);
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      }
+    };
+
+    loadSettings();
+  }, [userId]);
+
+  // Handlers for updating settings
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    if (!settings) return;
+    const { id, value } = e.target;
+    setSettings({
+      ...settings,
+      [id]: value,
+    });
+  };
+
+  const hasChanges = useMemo(() => {
+    // Simple shallow comparison. For deep objects, consider using a deep comparison method.
+    return JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  }, [settings, originalSettings]);
+
+  const handleSwitchChange = (id: keyof UserSettingsDto, checked: boolean) => {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      [id]: checked,
+    });
+  };
+
+  const handleSelectChange = (id: keyof UserSettingsDto, value: string) => {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      [id]: value,
+    });
+  };
+
+  const handleUpdate = async () => {
+    if (!userId || !settings) return;
+    if (!hasChanges) {
+      toast("No changes to update.", { icon: "ℹ️" });
+      return;
+    }
+    try {
+      await updateUserSettings(userId, settings);
+      setUpdateMessage("Settings updated successfully!");
+      toast.success("Settings updated successfully!");
+    } catch (err) {
+      console.error(err);
+      setUpdateMessage("Error updating settings.");
+      toast.error("Error updating settings.");
+    }
+  };
+
+  if (!settings) return <div>Loading...</div>;
+
   return (
     <div className="w-full mx-auto max-w-screen-xl h-screen bg-background text-foreground p-8">
       <Card className="p-6 bg-card">
+        {updateMessage && <p>{updateMessage}</p>}
         <Tabs defaultValue="profile">
-          <TabsList className="mb-6 flex flex-wrap gap-2">
-            <TabsTrigger value="profile">Profile & Account</TabsTrigger>
-            <TabsTrigger value="game">Game Preferences</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="matchmaking">Matchmaking</TabsTrigger>
-            <TabsTrigger value="display">Display & Accessibility</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy & Security</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced Options</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="flex gap-2 whitespace-nowrap px-2">
+              <TabsTrigger value="profile">Profile & Account</TabsTrigger>
+              <TabsTrigger value="game">Game Preferences</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="matchmaking">Matchmaking</TabsTrigger>
+              <TabsTrigger value="display">Display & Accessibility</TabsTrigger>
+              <TabsTrigger value="privacy">Privacy & Security</TabsTrigger>
+              <TabsTrigger value="advanced">Advanced Options</TabsTrigger>
+            </TabsList>
+          </div>
 
-          {/* Profile & Account */}
           <TabsContent value="profile">
-            <h3 className="text-xl font-semibold mb-4">
-              Profile & Account Settings
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="username" className="block mb-1">
-                  Username
-                </Label>
-                <Input id="username" placeholder="Your username" />
-              </div>
-              <div>
-                <Label htmlFor="email" className="block mb-1">
-                  Email
-                </Label>
-                <Input id="email" type="email" placeholder="you@example.com" />
-              </div>
-              <div>
-                <Label htmlFor="password" className="block mb-1">
-                  Password
-                </Label>
-                <Input id="password" type="password" placeholder="••••••••" />
-              </div>
-              <div>
-                <Label htmlFor="avatar" className="block mb-1">
-                  Avatar URL
-                </Label>
-                <Input id="avatar" placeholder="Link to your avatar" />
-              </div>
-              <div>
-                <Label htmlFor="bio" className="block mb-1">
-                  Bio
-                </Label>
-                <Textarea
-                  id="bio"
-                  placeholder="Tell us about yourself"
-                  rows={3}
-                />
-              </div>
-              <Button>Update Profile</Button>
-            </div>
+            <ProfileSettings
+              settings={settings}
+              onChange={handleInputChange}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
 
-          {/* Game Preferences */}
           <TabsContent value="game">
-            <h3 className="text-xl font-semibold mb-4">Game Preferences</h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="boardTheme" className="block mb-1">
-                  Board Theme
-                </Label>
-                <Select>
-                  <SelectTrigger id="boardTheme" className="w-full">
-                    <span>Select board theme</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="classic">Classic</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="wood">Wood</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="stoneTheme" className="block mb-1">
-                  Stone Theme
-                </Label>
-                <Select>
-                  <SelectTrigger id="stoneTheme" className="w-full">
-                    <span>Select stone theme</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="traditional">Traditional</SelectItem>
-                    <SelectItem value="modern">Modern</SelectItem>
-                    <SelectItem value="colorful">Colorful</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="soundSettings">Sound Effects</Label>
-                <Switch id="soundSettings" />
-              </div>
-              <div>
-                <Label htmlFor="timeControl" className="block mb-1">
-                  Default Time Control
-                </Label>
-                <Input id="timeControl" placeholder="e.g., Byo-yomi, Fischer" />
-              </div>
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="aiAssistance">AI / Move Suggestions</Label>
-                <Switch id="aiAssistance" />
-              </div>
-              <Button>Save Game Settings</Button>
-            </div>
+            <GamePreferences
+              settings={settings}
+              onChange={handleInputChange}
+              onSelectChange={handleSelectChange}
+              onSwitchChange={handleSwitchChange}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
 
-          {/* Notifications */}
           <TabsContent value="notifications">
-            <h3 className="text-xl font-semibold mb-4">
-              Notification Settings
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="emailNotifications">Email Notifications</Label>
-                <Switch id="emailNotifications" />
-              </div>
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="smsNotifications">SMS Notifications</Label>
-                <Switch id="smsNotifications" />
-              </div>
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="inAppNotifications">In-App Notifications</Label>
-                <Switch id="inAppNotifications" />
-              </div>
-              <Button>Update Notification Settings</Button>
-            </div>
+            <NotificationSettings
+              settings={settings}
+              onSwitchChange={handleSwitchChange}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
 
-          {/* Matchmaking */}
           <TabsContent value="matchmaking">
-            <h3 className="text-xl font-semibold mb-4">Matchmaking Settings</h3>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="displayRatings">Display Ratings Publicly</Label>
-                <Switch id="displayRatings" />
-              </div>
-              <div>
-                <Label htmlFor="matchFilters" className="block mb-1">
-                  Matchmaking Filters
-                </Label>
-                <Input
-                  id="matchFilters"
-                  placeholder="e.g., Skill level, game type, region"
-                />
-              </div>
-              <Button>Save Matchmaking Settings</Button>
-            </div>
+            <MatchmakingSettings
+              settings={settings}
+              onInputChange={handleInputChange}
+              onSwitchChange={handleSwitchChange}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
 
-          {/* Display & Accessibility */}
           <TabsContent value="display">
-            <h3 className="text-xl font-semibold mb-4">
-              Display & Accessibility Settings
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="theme" className="block mb-1">
-                  Theme
-                </Label>
-                <Select>
-                  <SelectTrigger id="theme" className="w-full">
-                    <span>Select theme</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="fontSize" className="block mb-1">
-                  Font Size
-                </Label>
-                <Select>
-                  <SelectTrigger id="fontSize" className="w-full">
-                    <span>Select font size</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Default</SelectItem>
-                    <SelectItem value="large">Large</SelectItem>
-                    <SelectItem value="small">Small</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="accessibility" className="block mb-1">
-                  Accessibility Options
-                </Label>
-                <Input id="accessibility" placeholder="e.g., high contrast" />
-              </div>
-              <div>
-                <Label htmlFor="language" className="block mb-1">
-                  Language
-                </Label>
-                <Select>
-                  <SelectTrigger id="language" className="w-full">
-                    <span>Select language</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="timezone" className="block mb-1">
-                  Time Zone
-                </Label>
-                <Input id="timezone" placeholder="Select time zone" />
-              </div>
-              <Button>Update Display Settings</Button>
-            </div>
+            <DisplaySettings
+              settings={settings}
+              onInputChange={handleInputChange}
+              onSelectChange={handleSelectChange}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
 
-          {/* Privacy & Security */}
           <TabsContent value="privacy">
-            <h3 className="text-xl font-semibold mb-4">
-              Privacy & Security Settings
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="twoFactor">Two-Factor Authentication</Label>
-                <Switch id="twoFactor" />
-              </div>
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="loginAlerts">Login Alerts</Label>
-                <Switch id="loginAlerts" />
-              </div>
-              <div>
-                <Label htmlFor="blockedUsers" className="block mb-1">
-                  Blocked Users
-                </Label>
-                <Input
-                  id="blockedUsers"
-                  placeholder="Manage your blocked list"
-                />
-              </div>
-              <div>
-                <Label htmlFor="dataExport" className="block mb-1">
-                  Data Export
-                </Label>
-                <Button id="dataExport" variant="outline">
-                  Export Data
-                </Button>
-              </div>
-              <div>
-                <Label htmlFor="deleteAccount" className="block mb-1">
-                  Delete Account
-                </Label>
-                <Button id="deleteAccount" variant="destructive">
-                  Delete Account
-                </Button>
-              </div>
-            </div>
+            <PrivacySettings
+              settings={settings}
+              onInputChange={handleInputChange}
+              onSwitchChange={handleSwitchChange}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
 
-          {/* Advanced Options */}
           <TabsContent value="advanced">
-            <h3 className="text-xl font-semibold mb-4">
-              Advanced & Developer Options
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="gameHistory" className="block mb-1">
-                  Game History
-                </Label>
-                <Input
-                  id="gameHistory"
-                  placeholder="View or download your game data"
-                />
-              </div>
-              <div>
-                <Label htmlFor="apiKey" className="block mb-1">
-                  API Integration
-                </Label>
-                <Input id="apiKey" placeholder="Manage your API keys" />
-              </div>
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="betaFeatures">Experimental Features</Label>
-                <Switch id="betaFeatures" />
-              </div>
-              <Button>Save Advanced Settings</Button>
-            </div>
+            <AdvancedSettings
+              settings={settings}
+              onInputChange={handleInputChange}
+              onSwitchChange={handleSwitchChange}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
         </Tabs>
       </Card>
     </div>
   );
-}
+};
+
+export default SettingsPage;
