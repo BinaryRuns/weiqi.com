@@ -129,6 +129,7 @@ export default function LoginPage() {
 
     if (redirectUrl) {
       window.location.href = redirectUrl;
+      return;
     } else {
       alert("OAuth provider not implemented yet");
     }

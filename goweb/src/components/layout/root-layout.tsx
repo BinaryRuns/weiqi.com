@@ -1,9 +1,7 @@
-"use client";
-
 import { ThemeProvider } from "@/components/theme-provider";
 import { Sidebar } from "@/components/sidebar";
 import { MobileHeader } from "@/components/mobile-header";
-import { Toaster } from "../ui/toaster";
+import { Toaster } from "react-hot-toast";
 import WaitingTimer from "../waitingTimer";
 
 export function RootLayout({ children }: { children: React.ReactNode }) {
