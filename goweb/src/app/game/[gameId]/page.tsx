@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Board } from "@/components/GoBoard/Board";
+import { GoBoard } from "@/components/GoBoard/Board";
 import PlayerCard from "@/components/play/board/playercard";
 import { useParams } from "next/navigation";
 import { useSelector } from "react-redux";
@@ -136,22 +136,20 @@ export default function GamePage() {
    * Handles the placement of a stone on the board
    * when clicked on the board.
    *
-   * @param position
+   * @param x
+   * @param y
+   * @param color
    * @returns
    */
-  const handleStonePlacement = (position: { x: number; y: number }) => {
-    if (!gameState || gameOver || !isConnected) return;
-
-    const { x, y } = position;
-
-    console.log("Sending moves");
-
-    // subscribe to the game's topic for move updates and requests
+  const handleStonePlacement = (x: number, y: number, color: "black" | "white") => {
+    if (!gameState || !isConnected) return;
+    
     send("/app/game.move", {
       roomId: params.gameId,
       userId: userId,
       x: x,
       y: y,
+      color: color
     });
   };
 
@@ -199,12 +197,11 @@ export default function GamePage() {
   return (
     <div className="flex h-screen flex-col md:flex-row">
       <div className="md:flex w-full md:w-3/6 h-full flex-col bg-background p-6 md:ml-6">
-        <div>
+        <div className="flex flex-col h-full">
           <div className="flex flex-row justify-between">
             <PlayerCard
               position="top"
               username={opponent?.userName || "Opponent"}
-              // Add player info and time remaining
             />
             <Timer
               currentTime={
@@ -216,22 +213,25 @@ export default function GamePage() {
             />
           </div>
 
-          <div className="flex-1 flex">
-            <div className="w-full h-full max-w-[100%] max-h-[100%]">
-              <Board
-                size={gameState.boardSize}
-                stones={gameState.stones}
-                onIntersectionClick={handleStonePlacement}
-                lastMove={null}
-                // Add other board props like onStonePlace
+          <div className="flex-1 relative">
+            <div className="absolute inset-0">
+              <GoBoard 
+                size={gameState?.boardSize || 19} 
+                initialStones={gameState?.stones?.map((row, y) => 
+                  row.map((color, x) => color ? { x, y, color } : null)
+                ).flat().filter((stone): stone is { x: number; y: number; color: "black" | "white" } => stone !== null) || []}
+                interactive={true}
+                onPlaceStone={handleStonePlacement}
+                inGame={true}
+                showCoordinates={true}
               />
             </div>
           </div>
+
           <div className="mt-2 flex flex-row justify-between">
             <PlayerCard
               position="bottom"
               username={currentUser?.userName || "Player"}
-              // Add player info and time remaining
             />
             <Timer
               currentTime={

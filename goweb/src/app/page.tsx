@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Board } from '../components/GoBoard/Board'
+import { GoBoard } from '../components/GoBoard/Board'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BoardSize } from '@/components/GoBoard/types'
@@ -17,7 +17,16 @@ export default function Home() {
         {/* Main section */}
         <div className="flex flex-col md:flex-row items-start justify-center gap-8 py-8">
           <div className="w-full max-w-xl">
-            <Board size={boardSize} stones={famousGame1[famousGame1.length - 1]} />
+            <GoBoard 
+              size={boardSize} 
+              initialStones={famousGame1[famousGame1.length - 1]
+                .map((row, y) => 
+                  row.map((color, x) => color ? { x, y, color } : null)
+                )
+                .flat()
+                .filter((stone): stone is { x: number; y: number; color: "black" | "white" } => stone !== null)
+              } 
+            />
           </div>
           
           <div className="w-full max-w-md space-y-6">
@@ -72,9 +81,10 @@ export default function Home() {
     
               
                 <div className="aspect-square w-full max-w-md mx-auto">
-                  <Board 
+                  <GoBoard 
                     size={9} 
-                    stones={[]}
+                    initialStones={[]}
+                    preview={true}
                   />
                 </div>
              

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Board } from "@/components/GoBoard/Board";
+import { GoBoard } from "@/components/GoBoard/Board";
 import PlayerCard from "@/components/play/board/playercard";
 
 export default function PlayPage() {
@@ -36,14 +36,19 @@ export default function PlayPage() {
   return (
     <div className="flex h-screen flex-col md:flex-row">
       <div className="hidden md:flex w-full md:w-3/6 h-full flex-col bg-background p-6 md:ml-6">
-        <div>
+        <div className="flex flex-col h-full">
           <PlayerCard position="top" />
-          <div className="flex-1 flex">
-            <div className="w-full h-full max-w-[100%] max-h-[100%]">
-              <Board size={19} stones={[]} />
+          <div className="flex-1 relative">
+            <div className="absolute inset-0">
+              <GoBoard 
+                size={19} 
+                initialStones={[]}
+                interactive={true}
+                inGame={false}
+                showCoordinates={true}
+              />
             </div>
           </div>
-
           <div className="mt-2">
             <PlayerCard position="bottom" />
           </div>

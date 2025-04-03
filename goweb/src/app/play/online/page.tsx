@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Board } from "@/components/GoBoard/Board";
+import { GoBoard } from "@/components/GoBoard/Board";
 import PlayerCard from "@/components/play/board/playercard";
 import GameSetup from "@/components/play/board/gamesetup";
 import { useRouter } from "next/navigation";
@@ -78,11 +78,17 @@ export default function PlayPage() {
   return (
     <div className="flex h-screen flex-col md:flex-row">
       <div className="md:flex w-full md:w-3/6 h-full flex-col bg-background p-6 md:ml-6">
-        <div>
+        <div className="flex flex-col h-full">
           <PlayerCard position="top" />
-          <div className="flex-1 flex">
-            <div className="w-full h-full max-w-[100%] max-h-[100%]">
-              <Board size={boardSize} stones={[]} />
+          <div className="flex-1 relative">
+            <div className="absolute inset-0">
+              <GoBoard 
+                size={boardSize} 
+                initialStones={[]}
+                interactive={true}
+                inGame={false}
+                showCoordinates={true}
+              />
             </div>
           </div>
           <div className="mt-2">
@@ -96,7 +102,7 @@ export default function PlayPage() {
           <h1 className="text-3xl font-bold text-center mb-10">New Game</h1>
           <GameSetup
             onBoardSizeChange={handleBoardSizeChange}
-            onGameSetup={handleGameSetup} // Pass handler to GameSetup
+            onGameSetup={handleGameSetup}
             initialBoardSize={boardSize}
           />
         </div>
