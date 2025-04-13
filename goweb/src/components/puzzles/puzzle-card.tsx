@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Puzzle } from "@/lib/types/puzzle";
 import { PreviewBoard } from "@/components/play/board/preview-board";
 import { HeartIcon } from "lucide-react";
-import { Board } from "../GoBoard/Board";
+import { GoBoard } from "../GoBoard/Board";
 
 
 interface PuzzleCardProps {
@@ -19,7 +19,11 @@ export function PuzzleCard({ puzzle, onClick }: PuzzleCardProps) {
     >
       <div className="aspect-square relative">
       {/* TODO: Puzzle info should come with the stone previews*/}
-        <Board size={puzzle.boardSize} stones={[[]]} />
+        <GoBoard 
+          size={puzzle.boardSize} 
+          initialStones={[]}
+          preview={true}
+        />
       </div>
       <div className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">

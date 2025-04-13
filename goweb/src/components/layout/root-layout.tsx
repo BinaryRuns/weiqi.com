@@ -1,7 +1,8 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { Sidebar } from "@/components/sidebar";
 import { MobileHeader } from "@/components/mobile-header";
-import { Toaster } from "react-hot-toast";
+// import { Toaster } from "react-hot-toast";
+import { Toaster } from "../ui/toaster";
 import WaitingTimer from "../waitingTimer";
 
 export function RootLayout({ children }: { children: React.ReactNode }) {
