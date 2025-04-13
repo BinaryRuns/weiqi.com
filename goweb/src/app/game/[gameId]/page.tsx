@@ -141,17 +141,17 @@ export default function GamePage() {
    * @param color
    * @returns
    */
-  const handleStonePlacement = (x: number, y: number, color: "black" | "white") => {
-    if (!gameState || !isConnected) return;
-    
+  const handleStonePlacement = (x: number, y: number) => {
+    if (!gameState || gameOver || !isConnected) return;
+  
     send("/app/game.move", {
       roomId: params.gameId,
-      userId: userId,
-      x: x,
-      y: y,
-      color: color
+      userId,
+      x,
+      y
     });
   };
+  
 
   const sendMessage = () => {
     if (!isConnected || !messageInput.trim()) return;
@@ -215,16 +215,17 @@ export default function GamePage() {
 
           <div className="flex-1 relative">
             <div className="absolute inset-0">
-              <GoBoard 
+            <GoBoard 
                 size={gameState?.boardSize || 19} 
                 initialStones={gameState?.stones?.map((row, y) => 
                   row.map((color, x) => color ? { x, y, color } : null)
                 ).flat().filter((stone): stone is { x: number; y: number; color: "black" | "white" } => stone !== null) || []}
                 interactive={true}
-                onPlaceStone={handleStonePlacement}
+                onPlaceStone={(x, y) => handleStonePlacement(x, y)} // <-- Fix here
                 inGame={true}
                 showCoordinates={true}
               />
+
             </div>
           </div>
 

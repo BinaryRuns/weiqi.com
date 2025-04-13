@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { boardThemes, type BoardTheme } from "./themes"
 
 interface GoBoardProps {
@@ -10,10 +10,11 @@ interface GoBoardProps {
   interactive?: boolean
   initialStones?: Array<{ x: number; y: number; color: "black" | "white" }>
   theme?: string
-  onPlaceStone?: (x: number, y: number, color: "black" | "white") => void
+  onPlaceStone?: (x: number, y: number) => void
   className?: string
   inGame?: boolean
   showCoordinates?: boolean
+  currentPlayerColor?: "black" | "white"
 }
 
 export function GoBoard({
@@ -26,19 +27,23 @@ export function GoBoard({
   className = "",
   inGame = false,
   showCoordinates = true,
+  currentPlayerColor,
 }: GoBoardProps) {
   const [stones, setStones] = useState<Array<{ x: number; y: number; color: "black" | "white" }>>(initialStones)
   const [currentColor, setCurrentColor] = useState<"black" | "white">("black")
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null)
+  
+  // Add a ref to track if we're waiting for a response
+  const waitingForResponse = useRef(false);
 
   // Get the current theme
   const currentTheme = boardThemes[theme] || boardThemes.classic
 
   // Update stones when initialStones changes
   useEffect(() => {
-    if (initialStones.length > 0) {
-      setStones(initialStones)
-    }
+    setStones(initialStones);
+    // Reset waiting state when stones are updated from server
+    waitingForResponse.current = false;
   }, [initialStones])
 
   // SVG viewBox dimensions
@@ -49,45 +54,54 @@ export function GoBoard({
 
   // Handle board click to place a stone
   const handleBoardClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!interactive || !inGame) return
+    if (!interactive) return;
+    
+    // If we're waiting for a response from the server, don't allow another move
+    if (inGame && waitingForResponse.current) return;
 
     // Get click coordinates relative to the SVG
-    const svg = e.currentTarget
-    const svgRect = svg.getBoundingClientRect()
-    const x = e.clientX - svgRect.left
-    const y = e.clientY - svgRect.top
+    const svg = e.currentTarget;
+    const svgRect = svg.getBoundingClientRect();
+    const x = e.clientX - svgRect.left;
+    const y = e.clientY - svgRect.top;
 
-    // Convert to viewBox coordinates
-    const viewBoxX = (x / svgRect.width) * viewBoxSize
-    const viewBoxY = (y / svgRect.height) * viewBoxSize
+    const viewBoxX = (x / svgRect.width) * viewBoxSize;
+    const viewBoxY = (y / svgRect.height) * viewBoxSize;
 
-    // Calculate the nearest intersection
-    const gridX = Math.round((viewBoxX - padding) / cellSize)
-    const gridY = Math.round((viewBoxY - padding) / cellSize)
+    const gridX = Math.round((viewBoxX - padding) / cellSize);
+    const gridY = Math.round((viewBoxY - padding) / cellSize);
 
-    // Validate the coordinates are within the board
-    if (gridX < 0 || gridX >= size || gridY < 0 || gridY >= size) return
+    if (gridX < 0 || gridX >= size || gridY < 0 || gridY >= size) return;
 
-    // Check if there's already a stone at this position
-    const stoneExists = stones.some((stone) => stone.x === gridX && stone.y === gridY)
-    if (stoneExists) return
+    const stoneExists = stones.some((stone) => stone.x === gridX && stone.y === gridY);
+    if (stoneExists) return;
 
-    // Add a new stone
-    const newStone = { x: gridX, y: gridY, color: currentColor }
-    setStones([...stones, newStone])
-
-    // Call the onPlaceStone callback if provided
-    if (onPlaceStone) {
-      onPlaceStone(gridX, gridY, currentColor)
+    // In game mode, just notify parent component about the move
+    if (inGame) {
+      if (onPlaceStone) {
+        // Set waiting flag and send move
+        waitingForResponse.current = true;
+        onPlaceStone(gridX, gridY);
+      }
+      return;
     }
 
-    // Switch to the other color for the next move
-    setCurrentColor(currentColor === "black" ? "white" : "black")
-  }
+    // Only for preview/standalone mode: place stone locally
+    if (!inGame && onPlaceStone) {
+      onPlaceStone(gridX, gridY);
+    }
+
+    // Only add local stones in preview / standalone mode
+    if (!inGame) {
+      const newStone = { x: gridX, y: gridY, color: currentColor };
+      setStones([...stones, newStone]);
+      setCurrentColor(currentColor === "black" ? "white" : "black");
+    }
+  };
 
   // Handle mouse move to show hover effect
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!interactive) {
+    if (!interactive || (inGame && waitingForResponse.current)) {
       setHoverPosition(null)
       return
     }
@@ -225,6 +239,12 @@ export function GoBoard({
   // Get star points
   const starPoints = getStarPoints()
 
+  // Determine hover color based on props or local state
+  const hoverColor = inGame && currentPlayerColor ? currentPlayerColor : currentColor;
+  
+  // Determine if board should show hover effects
+  const showHover = !waitingForResponse.current && interactive;
+
   return (
     <div className={`relative aspect-square ${className}`}>
       <svg
@@ -232,7 +252,7 @@ export function GoBoard({
         height="100%"
         viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
         preserveAspectRatio="xMidYMid meet"
-        className={`rounded-md shadow-lg ${interactive && inGame ? "cursor-crosshair" : ""}`}
+        className={`rounded-md shadow-lg ${interactive && inGame && !waitingForResponse.current ? "cursor-crosshair" : ""}`}
         onClick={handleBoardClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -349,14 +369,14 @@ export function GoBoard({
           </g>
         ))}
 
-        {/* Hover indicator */}
-        {interactive && hoverPosition && (
+        {/* Hover indicator - only show if not waiting for response */}
+        {showHover && hoverPosition && (
           <circle
             cx={padding + hoverPosition.x * cellSize}
             cy={padding + hoverPosition.y * cellSize}
             r={cellSize * 0.45}
-            fill={currentColor === "black" ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.5)"}
-            stroke={currentColor === "white" ? "#ccc" : "none"}
+            fill={hoverColor === "black" ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.5)"}
+            stroke={hoverColor === "white" ? "#ccc" : "none"}
             strokeWidth={viewBoxSize * 0.001}
           />
         )}
