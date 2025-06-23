@@ -122,8 +122,8 @@ public class GameRoomService {
         }
 
         // Get user
-        UserEntity user = userRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+        UserEntity user = userRepository.findBySupabaseUserId(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
         // add to redis and save
         gameRoom.addPlayer(userId, user.getUsername());

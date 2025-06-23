@@ -5,50 +5,42 @@
  */
 
 import { useRouter } from "next/navigation";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/store/store";
 import { useEffect, useState } from "react";
-import { setAccessToken } from "@/store/authSlice";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 
 // TODO: refractor the protected route component better
 
 const withAuth = (WrappedComponent: React.ComponentType) => {
   return function ProtectedComponent() {
-    const accessToken = useSelector(
-      (state: RootState) => state.auth.accessToken
-    );
     const router = useRouter();
-    const dispatch = useDispatch();
-    const [isLoading, setIsLoading] = useState(true);
+    const { user, loading } = useSupabaseAuth();
+    const [isClientLoaded, setIsClientLoaded] = useState(false);
 
+    // This useEffect ensures the component only renders on the client
     useEffect(() => {
-      const initializeAuth = async () => {
-        if (!accessToken) {
-          try {
-            const response = await fetch("/api/auth/refresh", {
-              method: "POST",
-            });
-            const { accessToken } = await response.json();
-            dispatch(setAccessToken(accessToken));
-          } catch (error) {
-            console.error("Failed to refresh token", error);
-            router.push("/login");
-          } finally {
-            setIsLoading(false);
-          }
-        } else {
-          setIsLoading(false);
-        }
-      };
+      setIsClientLoaded(true);
+    }, []);
 
-      initializeAuth();
-    }, [accessToken, dispatch, router]);
-
-    if (isLoading) {
-      return <h1>Loading...</h1>;
-    } else {
-      return accessToken ? <WrappedComponent /> : null;
+    // Don't render anything until both auth is loaded and client-side rendering is confirmed
+    if (loading || !isClientLoaded) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+          </div>
+        </div>
+      );
     }
+
+    // If auth is loaded but no user, redirect to login
+    if (!user) {
+      router.push('/login');
+      return null;
+          }
+
+    // User is authenticated, render the protected component
+    return <WrappedComponent />;
   };
 };
 

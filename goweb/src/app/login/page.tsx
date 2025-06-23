@@ -2,29 +2,40 @@
 
 import { useState } from "react";
 import { z } from "zod";
-import { useDispatch } from "react-redux";
-import { useRouter } from "next/navigation";
-import { setAccessToken } from "@/store/authSlice";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { FaGithub, FaGoogle } from "react-icons/fa";
+import { supabase } from "@/lib/supabase";
+import { AuthProviderButton } from "@/components/login/AuthProviderButton";
+import { googleProvider, githubProvider } from "@/lib/auth/providers";
 
 const LoginSchema = z.object({
-  username: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ username: "", password: "" });
-  const [errors, setErrors] = useState({ username: "", password: "" });
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({ email: "", password: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const dispatch = useDispatch();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  // Check for error in URL (from auth callback)
+  const errorMessage = searchParams.get("error");
+  if (errorMessage) {
+    toast({
+      title: "Authentication Error",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,6 +45,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     // Validate data using zod
     const validationResult = LoginSchema.safeParse(formData);
@@ -46,51 +58,24 @@ export default function LoginPage() {
         }
       });
       setErrors(fieldErrors);
+      setIsLoading(false);
       return;
     }
 
-    console.log("Form data is valid:", validationResult.data);
-
     try {
-      // Send data to backend
-      const response = await fetch("api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+      // Sign in with Supabase
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      // If the response is not ok, read the text and show a toast
-      if (!response.ok) {
-        await response.text(); // you could log the text if needed
+      if (error) {
         toast({
           title: "Login Failed",
-          description: "Please check your credentials and try again.",
+          description: error.message || "Please check your credentials and try again.",
           variant: "destructive",
         });
-        return;
-      }
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        toast({
-          title: "Login Failed",
-          description: "Please check your credentials and try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check if accessToken exists in the data
-      if (!data.accessToken) {
-        toast({
-          title: "Login Failed",
-          description: data.message || "Please check your credentials and try again.",
-          variant: "destructive",
-        });
+        setIsLoading(false);
         return;
       }
 
@@ -98,8 +83,6 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "You are being redirected to the home page.",
       });
-
-      dispatch(setAccessToken(data.accessToken));
 
       // Redirect to home page after a short delay to allow toast display
       setTimeout(() => {
@@ -109,29 +92,12 @@ export default function LoginPage() {
       // Handle any other errors
       toast({
         title: "Error",
-        description: "Please check your credentials and try again.",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
       console.error("Login error:", error);
-    }
-  };
-
-  // OAuth handler
-  const handleOAuthLogin = (provider: string) => {
-    const providerKey = provider.toLowerCase();
-    const oauthEndpoints: { [key: string]: string } = {
-      google: `api/auth/oauth/google`,
-      github: `api/auth/oauth/github`,
-      facebook: `api/auth/oauth/facebook`,
-    };
-
-    const redirectUrl = oauthEndpoints[providerKey];
-
-    if (redirectUrl) {
-      window.location.href = redirectUrl;
-      return;
-    } else {
-      alert("OAuth provider not implemented yet");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,14 +110,14 @@ export default function LoginPage() {
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
               <Input
-                name="username"
+                name="email"
                 placeholder="you@example.com"
-                autoComplete="username"
-                value={formData.username}
+                autoComplete="email"
+                value={formData.email}
                 onChange={handleChange}
               />
-              {errors.username && (
-                <p className="text-red-500 text-sm">{errors.username}</p>
+              {errors.email && (
+                <p className="text-red-500 text-sm">{errors.email}</p>
               )}
             </div>
             <div>
@@ -181,10 +147,12 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full bg-blue-600 text-white hover:bg-blue-700"
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
               size="lg"
+              disabled={isLoading}
             >
-              Log In
+              {isLoading ? "Logging in..." : "Log In"}
             </Button>
           </form>
 
@@ -195,24 +163,12 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-3">
-            <Button
-              className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
-              onClick={() => handleOAuthLogin("google")}
-            >
-              <FaGoogle className="w-6 h-6" />
-              Continue with Google
-            </Button>
-            <Button
-              className="w-full h-12 bg-black text-white border border-gray-600 hover:bg-gray-800 gap-3"
-              onClick={() => handleOAuthLogin("github")}
-            >
-              <FaGithub className="w-6 h-6" />
-              Continue with Github
-            </Button>
+            <AuthProviderButton provider={googleProvider} fullWidth />
+            <AuthProviderButton provider={githubProvider} fullWidth />
           </div>
 
           <div className="mt-4 text-center text-sm text-gray-400">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <a href="/register" className="text-blue-500 hover:underline">
               Sign up
             </a>

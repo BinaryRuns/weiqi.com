@@ -1,0 +1,24 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Game Logic
+
+This project implements the game of Go/Weiqi, an ancient board game with simple rules but complex strategy.
+
+## Core Game Logic
+
+- [GoGameLogic.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/services/GoGameLogic.java) - Backend game logic implementation
+- [board-utils.ts](mdc:goweb/src/lib/game/board-utils.ts) - Frontend board utilities
+
+## Game Data Structures
+
+- [GameRoom.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/model/GameRoom.java) - Backend game room model
+- [Player.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/model/Player.java) - Player model
+- [go.ts](mdc:goweb/src/lib/types/go.ts) - Frontend Go/Weiqi game types
+- [game-types.ts](mdc:goweb/src/types/game-types.ts) - Frontend game type definitions
+
+## Board Constants
+
+- [board.ts](mdc:goweb/src/lib/constants/board.ts) - Board size and other constants

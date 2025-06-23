@@ -6,8 +6,8 @@ import PlayerCard from "@/components/play/board/playercard";
 import GameSetup from "@/components/play/board/gamesetup";
 import { useRouter } from "next/navigation";
 import { startWaiting, stopWaiting } from "@/store/waitingSlice";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { useDispatch } from "react-redux";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 import { useMatchmakingNotifications } from "@/hooks/useMatchmakingNotifications";
 
 type BoardSize = 9 | 13 | 19;
@@ -21,8 +21,9 @@ export default function PlayPage() {
   useMatchmakingNotifications(); // Activate matchmaking listener
 
   const dispatch = useDispatch();
-  const userId = useSelector((state: RootState) => state.auth.userId);
-  const userName = useSelector((state: RootState) => state.auth.userName);
+  const { user } = useSupabaseAuth();
+  const userId = user?.id;
+  const userName = user?.user_metadata?.username || user?.email?.split('@')[0] || "User";
 
   const [boardSize, setBoardSize] = useState<BoardSize>(19);
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
@@ -47,6 +48,11 @@ export default function PlayPage() {
   };
 
   const joinMatchmakingQueue = async (config: GameConfig) => {
+    if (!userId) {
+      console.error("No user ID available");
+      return;
+    }
+    
     dispatch(startWaiting()); // Start waiting timer
 
     try {

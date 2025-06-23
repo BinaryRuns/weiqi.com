@@ -1,7 +1,6 @@
-import React, { useState } from "react";
-import { Input } from "@nextui-org/input";
-import { Button } from "@nextui-org/button";
-import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
+import React from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface SignUpFormProps {
   step: number;
@@ -14,6 +13,7 @@ interface SignUpFormProps {
   handleBack: () => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: () => void;
+  isLoading?: boolean;
 }
 
 const SignUpForm: React.FC<SignUpFormProps> = ({
@@ -22,6 +22,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
   handleInputChange,
   formData,
   handleSubmit,
+  isLoading = false,
 }) => {
   return (
     <div className="flex flex-col space-y-4">
@@ -30,10 +31,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
           name="email"
           value={formData.email}
           onChange={handleInputChange}
-          placeholder="johndoe@example.com"
-          startContent={<FaEnvelope />}
-          size="lg"
+          placeholder="you@example.com"
           type="email"
+          autoComplete="email"
+          disabled={isLoading}
         />
       </div>
       <div>
@@ -41,10 +42,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
           name="username"
           value={formData.username}
           onChange={handleInputChange}
-          placeholder="create username"
-          startContent={<FaUser />}
-          size="lg"
+          placeholder="Choose a username"
           type="text"
+          autoComplete="username"
+          disabled={isLoading}
         />
       </div>
       <div>
@@ -52,10 +53,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
           name="password"
           value={formData.password}
           onChange={handleInputChange}
-          placeholder="create password"
-          startContent={<FaLock />}
-          size="lg"
+          placeholder="Create password"
           type="password"
+          autoComplete="new-password"
+          disabled={isLoading}
         />
       </div>
       <div>
@@ -63,24 +64,28 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
           name="confirmPassword"
           value={formData.confirmPassword}
           onChange={handleInputChange}
-          placeholder="confirm password"
-          startContent={<FaLock />}
-          size="lg"
+          placeholder="Confirm password"
           type="password"
+          autoComplete="new-password"
+          disabled={isLoading}
         />
       </div>
       <Button
-        onPress={handleSubmit}
-        className="w-full bg-blue-600 text-white hover:bg-blue-700"
+        onClick={handleSubmit}
+        variant="outline"
+        className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
         size="lg"
+        disabled={isLoading}
       >
-        Sign Up
+        {isLoading ? "Signing up..." : "Sign Up"}
       </Button>
       <Button
         type="button"
-        className="w-full bg-gray-600 text-white hover:bg-gray-700"
+        variant="outline"
+        className="w-full flex items-center justify-center gap-2 bg-gray-600 text-white hover:bg-gray-700"
         size="lg"
         onClick={handleBack}
+        disabled={isLoading}
       >
         Back
       </Button>

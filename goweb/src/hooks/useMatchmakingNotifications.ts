@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { useDispatch } from "react-redux";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { stopWaiting } from "@/store/waitingSlice";
 
@@ -14,7 +14,8 @@ interface MatchFoundEvent {
 
 export const useMatchmakingNotifications = () => {
   const router = useRouter();
-  const userId = useSelector((state: RootState) => state.auth.userId);
+  const { user } = useSupabaseAuth();
+  const userId = user?.id;
   const dispatch = useDispatch();
   const { subscribe, isConnected } = useWebSocket();
 
@@ -35,5 +36,5 @@ export const useMatchmakingNotifications = () => {
       console.log("Unsubscribing from /user/queue/match-found");
       subscription?.unsubscribe();
     };
-  }, [userId, isConnected]);
+  }, [userId, isConnected, subscribe, dispatch, router]);
 };

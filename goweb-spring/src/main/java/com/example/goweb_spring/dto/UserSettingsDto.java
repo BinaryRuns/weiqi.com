@@ -1,16 +1,14 @@
 package com.example.goweb_spring.dto;
 
-
 import lombok.Data;
 
 @Data
 public class UserSettingsDto {
-    // Fields for UserEntity (profile & account)
-    private String username;
-    private String email;
-    private String password; // plain text; to be hashed
-    // Optionally include other profile-specific fields here
-
+    // Fields for UserEntity (profile & account) - managed via Supabase auth
+    private String username;     // Display name (can differ from Supabase auth name)
+    private String email;        // Read-only, synced from Supabase
+    private String supabaseUserId; // Read-only, the Supabase auth user ID
+    
     // Fields for UserSettingsEntity (other settings)
     private String avatarUrl;
     private String bio;

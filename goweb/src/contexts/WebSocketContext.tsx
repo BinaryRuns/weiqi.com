@@ -11,8 +11,7 @@ import React, {
 } from "react";
 import SockJS from "sockjs-client";
 import { Client, IMessage, StompSubscription, IFrame } from "@stomp/stompjs";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 
 // Define the shape of your WebSocket context
 type WebSocketContextType = {
@@ -32,12 +31,14 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<Client | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const userId = useSelector((state: RootState) => state.auth.userId);
+  const { user, session } = useSupabaseAuth();
+  const userId = user?.id;
+  const accessToken = session?.access_token;
 
   // Initialize and configure the STOMP client
   const connect = useCallback(() => {
-    if (!userId) {
-      console.warn("No access token - skipping WebSocket connection");
+    if (!userId || !accessToken) {
+      console.warn("No user ID or access token - skipping WebSocket connection");
       return;
     }
 
@@ -48,7 +49,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     const client = new Client({
       webSocketFactory: () =>
-        new SockJS(`http://localhost:8081/ws?userId=${userId}`),
+        new SockJS(`http://localhost:8081/ws?token=${accessToken}`),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
@@ -70,7 +71,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     client.activate();
     clientRef.current = client;
-  }, [userId]); // Recreate when accessToken changes
+  }, [userId, accessToken]); // Recreate when userId or accessToken changes
 
   // Disconnect the STOMP client
   const disconnect = useCallback(() => {
@@ -121,9 +122,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // 2. Add cleanup to useEffect
+  // Connect when user is authenticated and has a token
   useEffect(() => {
-    if (userId) {
+    if (userId && accessToken) {
       connect();
     } else {
       disconnect();
@@ -132,7 +133,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     return () => {
       disconnect();
     };
-  }, [userId, connect, disconnect]); // Now stable with memoized disconnect
+  }, [userId, accessToken, connect, disconnect]);
 
   return (
     <WebSocketContext.Provider value={{ isConnected, subscribe, send }}>

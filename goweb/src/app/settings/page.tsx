@@ -3,10 +3,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { fetchUserSettings } from "./api/get-user-settings";
 import { updateUserSettings } from "./api/update-user-settings";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 
 import ProfileSettings from "./components/ProfileSettings";
 import GamePreferences from "./components/GamePreferences";
@@ -55,7 +55,8 @@ export interface UserSettingsDto {
 }
 
 const SettingsPage: React.FC = () => {
-  const userId = useSelector((state: RootState) => state.auth.userId);
+  const { user } = useSupabaseAuth();
+  const userId = user?.id;
   const [settings, setSettings] = useState<UserSettingsDto | null>(null);
   const [originalSettings, setOriginalSettings] =
     useState<UserSettingsDto | null>(null);
