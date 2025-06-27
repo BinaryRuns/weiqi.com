@@ -122,12 +122,27 @@ public class GameRoomService {
         }
 
         // Get user
-        UserEntity user = userRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
-
-        // add to redis and save
-        gameRoom.addPlayer(userId, user.getUsername());
-        gameRoomRepository.save(gameRoom);
+        try {
+            System.out.println("Looking up user with Supabase ID: " + userId);
+            UserEntity user = userRepository.findBySupabaseUserId(userId)
+                    .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+            
+            System.out.println("Found user: " + user.getUsername() + " with email: " + user.getEmail());
+            
+            // add to redis and save
+            gameRoom.addPlayer(userId, user.getUsername());
+            gameRoomRepository.save(gameRoom);
+            System.out.println("Successfully added user " + user.getUsername() + " to room " + roomId);
+        } catch (UserNotFoundException e) {
+            System.err.println("ERROR: " + e.getMessage());
+            System.err.println("This likely means the user has authenticated with Supabase but doesn't exist in the backend database");
+            System.err.println("Make sure user sync is working properly and users are created in the database");
+            sendErrorToUser(userId, "USER_NOT_FOUND", e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Unexpected error adding user to game room: " + e.getMessage());
+            e.printStackTrace();
+            sendErrorToUser(userId, "UNEXPECTED_ERROR", "An error occurred while joining the room");
+        }
     }
 
     /**

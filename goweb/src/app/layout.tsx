@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { RootLayout } from "@/components/layout/root-layout";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
-
-import AuthProvider from "@/auth/AuthProvider";
+import { ReduxProvider } from "@/store/ReduxProvider";
+import { SupabaseAuthProvider } from "@/auth/SupabaseAuthProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,11 +18,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-gramm="false">
       <body className={inter.className}>
-        <AuthProvider>
-          <WebSocketProvider>
-            <RootLayout>{children}</RootLayout>
-          </WebSocketProvider>
-        </AuthProvider>
+        <ReduxProvider>
+          <SupabaseAuthProvider>
+            <WebSocketProvider>
+              <RootLayout>{children}</RootLayout>
+            </WebSocketProvider>
+          </SupabaseAuthProvider>
+        </ReduxProvider>
       </body>
     </html>
   );

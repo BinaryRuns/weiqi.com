@@ -17,11 +17,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "@/components/layout/logo";
 import { NavItem } from "@/components/layout/nav-item";
 import Link from "next/link";
-import { useDispatch, useSelector } from "react-redux";
-import { clearAccessToken } from "@/store/authSlice";
 import { useRouter } from "next/navigation";
-import { RootState } from "@/store/store";
 import { useState } from "react";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 
 const navItems = [
   { href: "/play", label: "Play", icon: GamepadIcon },
@@ -38,12 +36,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
-  const dispatch = useDispatch();
   const router = useRouter();
-  const { accessToken, userName } = useSelector(
-    (state: RootState) => state.auth
-  );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const { user, signOut } = useSupabaseAuth();
 
   const handleUserSectionClick = () => {
     setIsDropdownOpen(!isDropdownOpen);
@@ -51,22 +46,16 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
 
   const handleLogOut = async () => {
     try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        dispatch(clearAccessToken());
+      await signOut();
         setIsDropdownOpen(false);
-        router.push("/login");
-      } else {
-        console.error("Logout failed");
-      }
     } catch (error) {
       console.error("Error during logout:", error);
     }
   };
+
+  // Use user data from Supabase
+  const displayName = user?.user_metadata?.username || user?.email?.split('@')[0] || "User";
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
     <div
@@ -88,7 +77,7 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
           isMobile ? "p-4 mb-safe" : "pt-6"
         } border-t border-border`}
       >
-        {!accessToken ? (
+        {!user ? (
           <>
             <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/login" className="gap-3">
@@ -111,20 +100,21 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
             >
               <Avatar>
                 <AvatarImage
-                  src="https://example.com/user-avatar.jpg"
+                  src={avatarUrl || "https://example.com/user-avatar.jpg"}
                   alt="User Avatar"
                 />
-                <AvatarFallback>UA</AvatarFallback>
+                <AvatarFallback>{displayName.substring(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="font-medium truncate overflow-hidden whitespace-nowrap">{userName || "User"}</span>
-
+              <span className="font-medium truncate overflow-hidden whitespace-nowrap">
+                {displayName}
+              </span>
             </div>
             {isDropdownOpen && (
               <div className="absolute bottom-full mb-2 p-3 w-48 bg-darkcard border border-border rounded-lg shadow-lg">
                 <Button
                   variant="ghost"
                   className="w-full justify-start"
-                  onClick={() => console.log("Settings clicked")}
+                  onClick={() => router.push('/settings')}
                 >
                   <SettingsIcon className="w-4 h-4 mr-2" />
                   Settings

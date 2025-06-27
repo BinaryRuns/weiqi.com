@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { GoBoard } from "@/components/GoBoard/Board";
 import PlayerCard from "@/components/play/board/playercard";
 import { useParams } from "next/navigation";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 import Timer from "@/components/play/board/timer";
 import { useToast } from "@/hooks/use-toast";
 import ChatSection from "@/components/play/board/ChatSection";
@@ -36,9 +35,10 @@ export default function GamePage() {
 
   const { subscribe, isConnected, send } = useWebSocket();
 
-  // Retrieve user ID from Redux store
-  const userId = useSelector((state: RootState) => state.auth.userId);
-  const userName = useSelector((state: RootState) => state.auth.userName);
+  // Get user data from Supabase
+  const { user } = useSupabaseAuth();
+  const userId = user?.id;
+  const userName = user?.user_metadata?.username || user?.email?.split('@')[0] || "User";
 
   // ----- Testing -----
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function GamePage() {
       soundSubscription?.unsubscribe();
       resignSubscription?.unsubscribe();
     };
-  }, [isConnected, params.gameId, userId, toast, userName]);
+  }, [isConnected, params.gameId, userId, toast, userName, subscribe, send]);
 
   /**
    * Handles the placement of a stone on the board
@@ -142,7 +142,7 @@ export default function GamePage() {
    * @returns
    */
   const handleStonePlacement = (x: number, y: number) => {
-    if (!gameState || gameOver || !isConnected) return;
+    if (!gameState || gameOver || !isConnected || !userId) return;
   
     send("/app/game.move", {
       roomId: params.gameId,
@@ -154,7 +154,7 @@ export default function GamePage() {
   
 
   const sendMessage = () => {
-    if (!isConnected || !messageInput.trim()) return;
+    if (!isConnected || !messageInput.trim() || !userId || !userName) return;
 
     send(`/app/game.sendMessage/${params.gameId}`, {
       sender: userId,
@@ -168,7 +168,7 @@ export default function GamePage() {
   };
 
   const handleResign = () => {
-    if (!isConnected) return;
+    if (!isConnected || !userId) return;
 
     send("/app/game.resign", { roomId: params.gameId, userId });
   };

@@ -1,50 +1,58 @@
-import { store } from "@/store/store";
-import { setAccessToken, clearAccessToken } from "@/store/authSlice";
+import { supabase } from "@/lib/supabase";
 
 export const fetchWithAuth = async (
   url: string,
   options: RequestInit = {}
 ): Promise<Response> => {
-  let accessToken = store.getState().auth.accessToken;
+  // Get the current session from Supabase
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+  
+  // If no session, throw error
+  if (!accessToken) {
+    throw new Error("No active session found. Please log in.");
+  }
 
+  console.log("Fetching with token:", accessToken.substring(0, 15) + "...");
+  
   const response = await fetch(url, {
     ...options,
+    mode: 'cors',
+    credentials: 'include',
     headers: {
       ...(options.headers || {}),
-      Authorization: `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
   });
 
+  // Log the response for debugging
+  console.log("Response status:", response.status);
+  
   if (response.status === 401) {
-    // Attempt to refresh the token
-    const refreshResponse = await fetch("/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    });
+    // Attempt to refresh the session with Supabase
+    const { data: refreshData, error } = await supabase.auth.refreshSession();
 
-    if (refreshResponse.ok) {
-      const refreshData = await refreshResponse.json();
-      accessToken = refreshData.accessToken;
+    if (!error && refreshData.session) {
+      const newAccessToken = refreshData.session.access_token;
 
-      // Update Redux store with the new access token
-      if (accessToken) {
-        store.dispatch(setAccessToken(accessToken));
-      } else {
-        store.dispatch(clearAccessToken());
-      }
-
+      console.log("Retrying with refreshed token:", newAccessToken.substring(0, 15) + "...");
+      
       // Retry the original request with the new token
       return fetch(url, {
         ...options,
+        mode: 'cors',
+        credentials: 'include',
         headers: {
           ...(options.headers || {}),
-          Authorization: `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${newAccessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
       });
     } else {
       // Refresh token is invalid or expired
-      store.dispatch(clearAccessToken());
-      // router.push("/login");
       throw new Error("Unauthorized. Please log in again.");
     }
   }

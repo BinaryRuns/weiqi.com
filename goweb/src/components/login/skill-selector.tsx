@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "@nextui-org/button";
+import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 
 interface SkillSelectorProps {
@@ -25,12 +25,13 @@ const SkillSelector: React.FC<SkillSelectorProps> = ({
         <Button
           key={level}
           size="lg"
+          variant="outline"
           className={`w-full text-white border relative ${
             skillLevel === level
               ? "border-blue-600 bg-black"
               : "border-gray-600 bg-gray-800 hover:bg-gray-800"
           }`}
-          onPress={() => setSkillLevel(level)}
+          onClick={() => setSkillLevel(level)}
         >
           <div className="flex items-center justify-between w-full">
             <span className="capitalize">{level}</span>
@@ -40,18 +41,20 @@ const SkillSelector: React.FC<SkillSelectorProps> = ({
       ))}
 
       <Button
-        className="w-full bg-blue-600 mt-10 text-white hover:bg-blue-700"
+        variant="outline"
+        className="w-full flex items-center justify-center gap-2 bg-blue-600 mt-10 text-white hover:bg-blue-700"
         size="lg"
-        onPress={handleNext}
-        isDisabled={!skillLevel}
+        onClick={handleNext}
+        disabled={!skillLevel}
       >
         Next
       </Button>
 
       <Button
-        className="w-full bg-gray-600 text-white hover:bg-gray-700"
+        variant="outline"
+        className="w-full flex items-center justify-center gap-2 bg-gray-600 text-white hover:bg-gray-700"
         size="lg"
-        onPress={handleBack}
+        onClick={handleBack}
       >
         Back
       </Button>

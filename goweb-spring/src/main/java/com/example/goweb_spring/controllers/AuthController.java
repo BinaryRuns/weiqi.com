@@ -1,169 +1,157 @@
 package com.example.goweb_spring.controllers;
 
-import com.example.goweb_spring.dto.TokenResponse;
-import com.example.goweb_spring.dto.User;
 import com.example.goweb_spring.entities.UserEntity;
-import com.example.goweb_spring.model.ProviderUserInfo;
-import com.example.goweb_spring.services.AuthService;
-import com.example.goweb_spring.services.oauth.OAuthProviderService;
-import com.example.goweb_spring.utils.JwtUtil;
-import jakarta.servlet.http.HttpServletResponse;
+import com.example.goweb_spring.repositories.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-    private final JwtUtil jwtUtil;
-    private final AuthService authService;
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    
+    @Autowired
+    private UserRepository userRepository;
 
-
-    // Inject all available OAuthProviderService beans in a Map (keyed by their name)
-    private final Map<String, OAuthProviderService> oauthProviders;
-
-
-    public AuthController(JwtUtil jwtUtil,  AuthService authService, Map<String, OAuthProviderService> oauthProviders) {
-        this.jwtUtil = jwtUtil;
-        this.authService = authService;
-        this.oauthProviders = oauthProviders;
+    @GetMapping("/verify")
+    public ResponseEntity<?> verifyToken() {
+        logger.info("Verify token endpoint called");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        logger.info("Authentication object: {}", authentication);
+        
+        // Accept all authenticated users by checking simpler conditions
+        if (authentication != null && authentication.isAuthenticated()) {
+            String supabaseUserId = authentication.getName();
+            logger.info("User is authenticated with Supabase ID: {}", supabaseUserId);
+            
+            // Check if user exists in our database
+            Optional<UserEntity> userEntity = userRepository.findBySupabaseUserId(supabaseUserId);
+            boolean userExistsInDatabase = userEntity.isPresent();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("authenticated", true);
+            response.put("userId", supabaseUserId);
+            response.put("existsInDatabase", userExistsInDatabase);
+            
+            if (userExistsInDatabase) {
+                response.put("username", userEntity.get().getUsername());
+                response.put("email", userEntity.get().getEmail());
+            }
+            
+            // Return simple 200 OK with appropriate CORS headers
+            return ResponseEntity.ok(response);
+        }
+        
+        logger.warn("User is not authenticated. Authentication: {}", authentication);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("authenticated", false, "message", "Not authenticated"));
     }
-
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User user) {
+    
+    @PostMapping("/sync-user")
+    public ResponseEntity<?> syncUserData(@RequestBody Map<String, Object> userData) {
+        logger.info("Sync user endpoint called");
+        // This endpoint will be called by the frontend after successful Supabase login
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            logger.warn("Attempted to sync user without authentication");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Not authenticated"));
+        }
+        
+        String supabaseUserId = authentication.getName();
+        String email = (String) userData.get("email");
+        String username = (String) userData.get("username"); 
+        String avatarUrl = (String) userData.get("avatarUrl");
+        String skillLevel = (String) userData.getOrDefault("skillLevel", "beginner");
+        
+        logger.info("Syncing user data for user ID: {}, email: {}", supabaseUserId, email);
+        
+        // First check if a user with this email already exists
+        if (email != null && !email.isEmpty()) {
+            Optional<UserEntity> existingUserByEmail = userRepository.findByEmail(email);
+            if (existingUserByEmail.isPresent()) {
+                UserEntity existingUser = existingUserByEmail.get();
+                logger.warn("User with email {} already exists with different Supabase ID: {} vs {}", 
+                    email, existingUser.getSupabaseUserId(), supabaseUserId);
+                
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "User with this email already exists",
+                        "existingUserId", existingUser.getSupabaseUserId()
+                    ));
+            }
+        }
+        
+        // Check if user with this Supabase ID already exists
+        Optional<UserEntity> existingUserById = userRepository.findBySupabaseUserId(supabaseUserId);
+        
+        UserEntity user;
+        boolean isNewUser = false;
+        
+        if (existingUserById.isPresent()) {
+            // Update existing user
+            user = existingUserById.get();
+            logger.info("Updating existing user: {}", user.getUsername());
+            if (email != null) user.setEmail(email);
+            if (username != null) user.setUsername(username);
+            if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
+            if (skillLevel != null) user.setSkillLevel(skillLevel);
+            user.setLastSyncedAt(LocalDateTime.now());
+        } else {
+            // Create new user
+            isNewUser = true;
+            logger.info("Creating new user with Supabase ID: {}", supabaseUserId);
+            user = new UserEntity();
+            user.setSupabaseUserId(supabaseUserId);
+            user.setEmail(email != null ? email : "");
+            user.setUsername(username != null ? username : "player_" + supabaseUserId.substring(0, 8));
+            user.setAvatarUrl(avatarUrl);
+            user.setSkillLevel(skillLevel != null ? skillLevel : "beginner");
+        }
+        
         try {
-            TokenResponse tokens = authService.loginUser(user.getUsername(), user.getPassword());
-
-            // Set Refresh Token in an HttpOnly Cookie
-            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokens.getRefreshToken())
-                    .httpOnly(true)
-                    .secure(true)
-                    .path("/api/auth/refresh")
-                    .maxAge(7 * 24 * 60 * 60)
-                    .build();
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                    .body(new TokenResponse(tokens.getAccessToken(), null));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            userRepository.save(user);
+            logger.info("User successfully synchronized: {}", user.getUsername());
+            
+            return ResponseEntity.status(isNewUser ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(Map.of(
+                    "success", true,
+                    "userId", supabaseUserId,
+                    "username", user.getUsername(),
+                    "isNewUser", isNewUser
+                ));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+            logger.error("Error saving user: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "message", "Error saving user: " + e.getMessage()
+                ));
         }
     }
-
-
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user) {
-        try {
-            UserEntity newUser = authService.registerUser(
-                    user.getUsername(),
-                    user.getEmail(),
-                    user.getPassword(),
-                    user.getSkillLevel()
-            );
-
-            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully: " + newUser.getUsername());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
-        }
+    
+    @RequestMapping(value = "/verify", method = RequestMethod.OPTIONS)
+    public ResponseEntity<?> handleVerifyOptions() {
+        logger.info("OPTIONS request to /verify endpoint");
+        return ResponseEntity.ok().build();
     }
-
-    @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
-        try {
-            TokenResponse tokenResponse = authService.refreshToken(refreshToken);
-
-            // Set the new refresh token in an HTTP-only cookie
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
-                    .httpOnly(true)
-                    .secure(true)
-                    .path("/api/auth/refresh")
-                    .maxAge(7 * 24 * 60 * 60) // 7 days
-                    .build();
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body(new TokenResponse(tokenResponse.getAccessToken(), null));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
-        }
-    }
-
-
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
-        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/api/auth/refresh")
-                .maxAge(0) // Remove the cookie immediately
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
-                .body("Logged out successfully");
-    }
-
-
-
-    @GetMapping("/oauth/{provider}")
-    public void redirectToProvider(@PathVariable String provider, HttpServletResponse response) throws IOException {
-        OAuthProviderService service = oauthProviders.get(provider.toLowerCase());
-        if (service == null) {
-            response.sendError(HttpStatus.BAD_REQUEST.value(), "Unsupported provider");
-            return;
-        }
-        String authUrl = service.getAuthorizationUrl();
-        response.sendRedirect(authUrl);
-    }
-
-
-    @GetMapping("/oauth/{provider}/callback")
-    public void handleProviderCallback(
-            @PathVariable String provider,
-            @RequestParam String code,
-            HttpServletResponse response) throws IOException {
-
-
-        OAuthProviderService service = oauthProviders.get(provider.toLowerCase());
-
-        if (service == null) {
-            response.sendError(HttpStatus.BAD_REQUEST.value(), "Unsupported provider");
-            return;
-        }
-        // Exchange the code for an access token
-        String providerAccessToken = service.exchangeCodeForToken(code);
-        // Fetch the user info from the provider
-        ProviderUserInfo userInfo = service.fetchUserInfo(providerAccessToken);
-
-        if (userInfo == null) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unable to fetch user info");
-            return;
-        }
-
-        System.out.println(userInfo);
-
-        // At this point, you can find or create a local user based on the provider's user info.
-        TokenResponse tokenResponse = authService.loginOrRegisterOAuthUser(userInfo, provider, userInfo.getProviderUserId());
-
-        // Set refresh token in an HTTP‑only cookie
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
-                .httpOnly(true)
-                .secure(true) // use secure cookies in production
-                .path("/api/auth/refresh")
-                .maxAge(7 * 24 * 60 * 60)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-
-
-        String frontendRedirectUrl = "http://localhost:3000/auth/callback?accessToken=" + tokenResponse.getAccessToken();
-        response.sendRedirect(frontendRedirectUrl);
+    
+    @RequestMapping(value = "/sync-user", method = RequestMethod.OPTIONS)
+    public ResponseEntity<?> handleSyncUserOptions() {
+        logger.info("OPTIONS request to /sync-user endpoint");
+        return ResponseEntity.ok().build();
     }
 }

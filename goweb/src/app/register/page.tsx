@@ -1,22 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@nextui-org/input";
-import { Button } from "@nextui-org/button";
-import { FcGoogle } from "react-icons/fc";
-import { Checkbox } from "@nextui-org/checkbox";
+import { Button } from "@/components/ui/button";
 import {
-  FaUser,
+  FaGithub,
   FaEnvelope,
-  FaLock,
-  FaFacebook,
-  FaApple,
 } from "react-icons/fa";
 import SkillSelector from "@/components/login/skill-selector";
 import SignUpForm from "@/components/login/signup";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { supabase } from "@/lib/supabase";
+import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
+import { AuthProviderButton } from "@/components/login/AuthProviderButton";
+import { googleProvider, githubProvider } from "@/lib/auth/providers";
 
 export default function SignUpPage() {
   const [step, setStep] = useState(1);
@@ -27,6 +25,7 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -45,43 +44,60 @@ export default function SignUpPage() {
   };
 
   const handleSubmit = async () => {
-    const dataToSubmit = { ...formData, skillLevel };
-
-    console.log("Submitting data:", dataToSubmit);
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dataToSubmit),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Registration Successful",
-          description:
-            "Your account has been created. Redirecting to login page...",
-        });
-        setTimeout(() => {
-          router.push("/login");
-        }, 1000);
-      } else {
-        const errorText = await response.text();
-        toast({
-          title: "Registration Failed",
-          description: errorText || "Please check your details and try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+    setIsLoading(true);
+    
+    if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
-        description: "An error occurred. Please try again.",
+        description: "Passwords do not match.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Register with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            username: formData.username,
+            skill_level: skillLevel,
+          }
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Registration Failed",
+          description: error.message || "Please check your details and try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created. Redirecting to login page...",
+      });
+
+      // Redirect to home page after a short delay to allow toast display
+      setTimeout(() => {
+        router.push("/");
+      }, 1000);
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred. Please try again.",
         variant: "destructive",
       });
       console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -101,11 +117,13 @@ export default function SignUpPage() {
               <div className="flex flex-col gap-4">
                 <Button
                   type="button"
-                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                  variant="outline"
+                  className="w-full flex items-center gap-2"
                   size="lg"
-                  onPress={handleNext}
+                  onClick={handleNext}
                 >
-                  Signup
+                  <FaEnvelope className="h-5 w-5" />
+                  <span>Sign up with Email</span>
                 </Button>
               </div>
 
@@ -117,27 +135,8 @@ export default function SignUpPage() {
 
               {/* Third-Party Login Buttons */}
               <div className="space-y-3">
-                <Button
-                  className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
-                  size="lg"
-                  startContent={<FaApple size={25} />}
-                >
-                  Continue with Apple
-                </Button>
-                <Button
-                  className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
-                  size="lg"
-                  startContent={<FcGoogle size={25} />}
-                >
-                  Continue with Google
-                </Button>
-                <Button
-                  className="w-full bg-black text-white border border-gray-600 hover:bg-gray-800"
-                  size="lg"
-                  startContent={<FaFacebook size={25} />}
-                >
-                  Continue with Facebook
-                </Button>
+                <AuthProviderButton provider={googleProvider} fullWidth />
+                <AuthProviderButton provider={githubProvider} fullWidth />
               </div>
             </div>
           )}
@@ -159,6 +158,7 @@ export default function SignUpPage() {
               handleInputChange={handleInputChange}
               formData={formData}
               handleSubmit={handleSubmit}
+              isLoading={isLoading}
             />
           )}
 

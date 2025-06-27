@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# User Settings
+
+The application includes a comprehensive user settings system that allows users to customize their experience.
+
+## Settings Pages
+
+- [settings/page.tsx](mdc:goweb/src/app/settings/page.tsx) - Main settings page with tabs
+- [components/ProfileSettings.tsx](mdc:goweb/src/app/settings/components/ProfileSettings.tsx) - Profile settings component
+- [components/GamePreferences.tsx](mdc:goweb/src/app/settings/components/GamePreferences.tsx) - Game preferences component
+- [components/DisplaySettings.tsx](mdc:goweb/src/app/settings/components/DisplaySettings.tsx) - Display settings component
+
+## Settings API
+
+- [get-user-settings.ts](mdc:goweb/src/app/settings/api/get-user-settings.ts) - API to fetch user settings
+- [update-user-settings.ts](mdc:goweb/src/app/settings/api/update-user-settings.ts) - API to update user settings
+
+## Backend Implementation
+
+- [UserSettingsController.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/controllers/UserSettingsController.java) - Settings controller
+- [UserSettingsService.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/services/UserSettingsService.java) - Settings service
+- [UserSettingsEntity.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/entities/UserSettingsEntity.java) - Settings entity
+- [UserSettingsDto.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/dto/UserSettingsDto.java) - Settings DTO

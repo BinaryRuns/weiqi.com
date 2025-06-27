@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -17,30 +16,38 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(nullable = false, unique = true, updatable = false)
-    private UUID userId;
+    // Supabase user ID
+    @Column(nullable = false, unique = true, updatable = false, length = 36)
+    private String supabaseUserId;
 
+    // Username can be set separately from Supabase's auth info
     @Column(nullable = false, unique = true)
     private String username;
 
+    // Email from Supabase auth
     @Column(nullable = false, unique = true)
     private String email;
 
-    // To support oauth logins we made the passwordHash nullable
+    // User profile/avatar URL (often provided by auth providers)
     @Column(nullable = true)
-    private String passwordHash;
+    private String avatarUrl;
 
+    // Record creation timestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // User's self-reported skill level for matchmaking
     @Column(nullable = false)
     private String skillLevel;
 
+    // Last time the user data was synced with Supabase
+    @Column(nullable = false)
+    private LocalDateTime lastSyncedAt;
+
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        if(this.userId == null) {
-            this.userId = UUID.randomUUID();
-        }
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.lastSyncedAt = now;
     }
 }

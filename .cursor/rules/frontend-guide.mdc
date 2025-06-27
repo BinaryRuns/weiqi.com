@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Frontend Guide
+
+The frontend is built with Next.js and is located in the [goweb/](mdc:goweb) directory.
+
+## Key Pages
+
+- [app/page.tsx](mdc:goweb/src/app/page.tsx) - Homepage
+- [app/game/[gameId]/page.tsx](mdc:goweb/src/app/game/[gameId]/page.tsx) - Game page with dynamic route
+- [app/play/online/page.tsx](mdc:goweb/src/app/play/online/page.tsx) - Online play page
+- [app/settings/page.tsx](mdc:goweb/src/app/settings/page.tsx) - User settings page
+
+## Important Components
+
+- [components/GoBoard/Board.tsx](mdc:goweb/src/components/GoBoard/Board.tsx) - The Go/Weiqi game board component
+- [components/layout/root-layout.tsx](mdc:goweb/src/components/layout/root-layout.tsx) - Main layout component
+- [components/play/board/GameControls.tsx](mdc:goweb/src/components/play/board/GameControls.tsx) - Game control UI
+
+## Data Flow
+
+- [hooks/use-game-websocket.ts](mdc:goweb/src/hooks/use-game-websocket.ts) - WebSocket connection for real-time game data
+- [contexts/WebSocketContext.tsx](mdc:goweb/src/contexts/WebSocketContext.tsx) - WebSocket context provider
+- [store/store.ts](mdc:goweb/src/store/store.ts) - Redux store for state management
