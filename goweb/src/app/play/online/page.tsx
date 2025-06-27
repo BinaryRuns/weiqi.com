@@ -9,6 +9,7 @@ import { startWaiting, stopWaiting } from "@/store/waitingSlice";
 import { useDispatch } from "react-redux";
 import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 import { useMatchmakingNotifications } from "@/hooks/useMatchmakingNotifications";
+import { fetchWithAuth } from "@/utils/api";
 
 type BoardSize = 9 | 13 | 19;
 
@@ -56,11 +57,8 @@ export default function PlayPage() {
     dispatch(startWaiting()); // Start waiting timer
 
     try {
-      const response = await fetch("/api/matchmaking/join", {
+      const response = await fetchWithAuth("/api/matchmaking/join", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           userId,
           rating: 500,

@@ -12,6 +12,10 @@ interface MatchFoundEvent {
   timeControl: string;
 }
 
+/**
+ * Hook that subscribes to matchmaking notifications via WebSocket
+ * and navigates to the game room when a match is found
+ */
 export const useMatchmakingNotifications = () => {
   const router = useRouter();
   const { user } = useSupabaseAuth();
@@ -20,20 +24,52 @@ export const useMatchmakingNotifications = () => {
   const { subscribe, isConnected } = useWebSocket();
 
   useEffect(() => {
-    if (!userId || !isConnected) return;
+    if (!userId || !isConnected) {
+      return;
+    }
 
-    console.log("Subscribing to /user/queue/match-found");
+    // Subscribe to match-found notifications
     const subscription = subscribe<MatchFoundEvent>(
       `/user/queue/match-found`,
       (data) => {
+        // Stop the waiting spinner/indicator
         dispatch(stopWaiting());
-        console.log("Match found:", data);
-        router.push(`/game/${data.roomId}`);
+        
+        if (!data || !data.roomId) {
+          console.error("Invalid match data received");
+          return;
+        }
+
+        // Store the game room ID in session storage as a backup mechanism
+        try {
+          sessionStorage.setItem('lastMatchRoomId', data.roomId);
+        } catch (err) {
+          // Non-critical error, just log it
+          console.warn("Could not save game room ID to session storage");
+        }
+        
+        try {
+          const gameUrl = `/game/${data.roomId}`;
+          
+          // Use setTimeout to ensure this happens after the current execution context
+          setTimeout(() => {
+            router.push(gameUrl);
+          }, 100);
+        } catch (error) {
+          console.error("Navigation to game room failed", error);
+          
+          // Fallback navigation method
+          try {
+            window.location.href = `/game/${data.roomId}`;
+          } catch (fallbackError) {
+            console.error("All navigation methods failed");
+          }
+        }
       }
     );
 
+    // Clean up subscription on unmount
     return () => {
-      console.log("Unsubscribing from /user/queue/match-found");
       subscription?.unsubscribe();
     };
   }, [userId, isConnected, subscribe, dispatch, router]);

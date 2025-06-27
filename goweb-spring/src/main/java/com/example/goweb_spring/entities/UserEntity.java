@@ -16,7 +16,7 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    // Supabase user ID (changed from UUID to String to match Supabase's format)
+    // Supabase user ID
     @Column(nullable = false, unique = true, updatable = false, length = 36)
     private String supabaseUserId;
 
