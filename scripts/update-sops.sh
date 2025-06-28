@@ -17,9 +17,9 @@ for pub in keys/*.asc; do
 done
 
 # 3) Load existing fingerprints from .sops.yaml
-+fps_csv=$(IFS=,; echo "${current_fps[*]}")
-+echo "🔧 Setting .sops.yaml pgp to: $fps_csv"
-+yq e -i '.creation_rules[0].pgp = "'"$fps_csv"'"' .sops.yaml
+fps_csv=$(IFS=,; echo "${current_fps[*]}")
+echo "🔧 Setting .sops.yaml pgp to: $fps_csv"
+yq e -i '.creation_rules[0].pgp = "'"$fps_csv"'"' .sops.yaml
 
 # 6) Rotate all .env.enc files (recursively)
 mapfile -t env_files < <(find . -type f -name '.env.enc')
