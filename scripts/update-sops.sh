@@ -1,38 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Allow "keys/*.asc" to expand to empty rather than literal\shopt -s nullglob
+# Allow "keys/*.asc" to expand to empty array instead of literal
+shopt -s nullglob
 
-# If no plaintext .env but encrypted exists, decrypt it first\if [ ! -f .env ] && [ -f .env.enc ]; then
-  echo "🔒 Decrypting existing .env.enc to .env"
-  sops --input-type dotenv --output-type dotenv --decrypt .env.enc > .env
+# Check for the encrypted file
+if [ ! -f .env.enc ]; then
+  echo "⚠️  .env.enc not found; cannot update recipients."
+  exit 1
 fi
 
-# Collect all public-key files
+# Collect public-key files
 pub_keys=(keys/*.asc)
 
-# If none, skip
+# If none, exit
 if [ ${#pub_keys[@]} -eq 0 ]; then
-  echo "↩️  No public keys in keys/*.asc — skipping SOPS config rebuild."
+  echo "↩️  No public keys in keys/*.asc — nothing to do."
   exit 0
 fi
 
-# Rebuild .sops.yaml
-cat > .sops.yaml <<'EOF'
-creation_rules:
-  - path_regex: '(^|/)\.env$'
-    encrypted_regex: '^(?!#).*'
-    pgp:
-EOF
+# Import keys in show-only mode (for fingerprint extraction)
+for pub in "${pub_keys[@]}"; do
+  gpg --import-options show-only --import "$pub"
+done
 
-# Append each fingerprint
+# Add each public key as a recipient to the encrypted file
 for pub in "${pub_keys[@]}"; do
   fp=$(gpg --with-colons --import-options show-only --import "$pub" \
          | awk -F: '/^fpr:/ {print $10; exit}')
-  echo "      - \"$fp\"" >> .sops.yaml
+  echo "🔐 Adding PGP recipient $fp to .env.enc"
+  sops -i --rotate --add-pgp "$fp" .env.enc
 done
 
-# Re-encrypt .env into .env.enc
-sops --input-type dotenv --output-type dotenv --encrypt .env > .env.enc
-
-echo "✅  .sops.yaml and .env.enc regenerated for ${#pub_keys[@]} key(s)."
+echo "✅  .env.enc updated with ${#pub_keys[@]} recipient(s)."
