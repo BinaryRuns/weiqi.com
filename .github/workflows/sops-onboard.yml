@@ -1,0 +1,31 @@
+# .github/workflows/sops-onboard.yml
+name: Refresh SOPS config
+
+on:
+  push:
+    paths:
+      - "keys/*.asc" # only when a new key is added/changed
+
+jobs:
+  rebuild-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Import CI’s GPG key
+        env:
+          GPG_TTY: ${{ steps.tty.outputs.tty }}
+        run: |
+          echo "${{ secrets.CI_GPG_PRIVATE }}" > ci.key.asc
+          gpg --import ci.key.asc
+      - id: tty
+        run: echo "::set-output name=tty::$(tty)"
+
+      - name: Rebuild SOPS config & re-encrypt
+        run: scripts/update-sops.sh
+
+      - name: Commit & push changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: onboard new teammate and re-encrypt env"
+          branch: main
