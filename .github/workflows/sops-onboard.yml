@@ -41,9 +41,17 @@ jobs:
           echo "${{ secrets.CI_GPG_PRIVATE }}" > ci.key.asc
           gpg --batch --import ci.key.asc
 
+      - name: Import all teammates’ public keys
+        run: |
+          for pub in keys/*.asc; do
+            echo "🔑 Importing $pub"
+            gpg --batch --import "$pub"
+          done
+
       # 6) Rebuild .sops.yaml and re-encrypt .env → .env.enc
       - name: Rebuild SOPS config & re-encrypt
-        run: bash scripts/update-sops.sh
+        run: |
+          bash scripts/update-sops.sh
 
       # 7) Commit & push the changes back to main
       - name: Commit & push changes
