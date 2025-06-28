@@ -154,29 +154,32 @@ This project uses [Mozilla SOPS](https://github.com/mozilla/sops) for encrypting
    # Then create a PR from your branch to main via GitHub interface
    ```
 
-3. After your PR is reviewed and merged, the GitHub Actions workflow (`sops-onboard.yml`) will automatically:
+3. When your PR is opened, the GitHub Actions workflow (`sops-onboard.yml`) will automatically:
 
    - Import all public keys from the `keys/` directory
    - Update the `.sops.yaml` configuration with all fingerprints
    - Re-encrypt all `.env.enc` files to include the new key
-   - Create a new pull request with these changes
+   - Commit these changes directly to your PR branch
 
-4. After an existing team member approves and merges this second PR:
+4. After your PR is reviewed and merged:
 
    ```bash
    # Switch back to main and pull the latest changes
    git checkout main
    git pull
 
-   # Decrypt the environment file
-   sops --decrypt .env.enc > .env
+   # Decrypt the environment files
+   ./scripts/decrypt.sh
    ```
 
 #### Working with Encrypted Files
 
 ```bash
-# Decrypt an encrypted .env file
-sops --decrypt .env.enc > .env
+# Decrypt an encrypted .env file to .env.dec
+./scripts/decrypt.sh
+
+# Or decrypt manually
+sops --decrypt --input-type dotenv --output-type dotenv .env.enc > .env.dec
 
 # Edit an encrypted file directly (opens in your default editor)
 sops .env.enc
@@ -184,6 +187,20 @@ sops .env.enc
 # Re-encrypt after making changes
 ./scripts/encrypt.sh
 ```
+
+#### GitHub Actions Workflow
+
+This project uses GitHub Actions to automate the SOPS key management process:
+
+1. When a PR with changes to `keys/*.asc` is opened or updated, the `sops-onboard.yml` workflow runs
+2. The workflow automatically:
+
+   - Imports all public keys from the `keys/` directory
+   - Updates the `.sops.yaml` configuration with all fingerprints
+   - Re-encrypts all `.env.enc` files to include the new keys
+   - Commits and pushes these changes directly to the PR branch
+
+3. After the PR is reviewed and merged, all team members can access the encrypted files with their keys.
 
 #### Key Rotation and Management
 
