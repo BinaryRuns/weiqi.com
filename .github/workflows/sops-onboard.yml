@@ -36,15 +36,15 @@ jobs:
 
       # 4) Capture the runner's TTY for GPG
       - id: tty
-        run: echo "::set-output name=tty::$(tty)"
+        run: echo "tty=$(tty)" >> $GITHUB_OUTPUT
 
       # 5) Import the CI GPG private key (no passphrase needed)
       - name: Import CI's GPG key
         env:
           GPG_TTY: ${{ steps.tty.outputs.tty }}
         run: |
-          echo "${{ secrets.CI_GPG_PRIVATE }}" > ci.key.asc
-          gpg --batch --import ci.key.asc
+          echo "${{ secrets.CI_GPG_PRIVATE }}" \
+            | gpg --batch --import
 
       - name: Import all teammates' public keys
         shell: bash
@@ -85,3 +85,4 @@ jobs:
           reviewers: "lstsk"
           labels: "ci,sops"
           commit-message: "chore: re-encrypt env for new teammate"
+          skip-if-no-changes: true
