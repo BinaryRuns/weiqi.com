@@ -4,7 +4,7 @@ name: Refresh SOPS config
 on:
   push:
     paths:
-      - "keys/*.asc" # only when a new key is added/changed
+      - "keys/*.asc" # trigger when a new public key is added/changed
 
 jobs:
   rebuild-secrets:
@@ -12,18 +12,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # 1) Capture the runner's TTY, so GPG can prompt if it ever needed to
+      - id: tty
+        run: echo "::set-output name=tty::$(tty)"
+
+      # 2) Import the CI GPG key (no passphrase needed)
       - name: Import CI’s GPG key
         env:
           GPG_TTY: ${{ steps.tty.outputs.tty }}
         run: |
           echo "${{ secrets.CI_GPG_PRIVATE }}" > ci.key.asc
-          gpg --import ci.key.asc
-      - id: tty
-        run: echo "::set-output name=tty::$(tty)"
+          gpg --batch --import ci.key.asc
 
+      # 3) Rebuild .sops.yaml and re-encrypt .env
       - name: Rebuild SOPS config & re-encrypt
         run: scripts/update-sops.sh
 
+      # 4) Commit the updated files back to main
       - name: Commit & push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
