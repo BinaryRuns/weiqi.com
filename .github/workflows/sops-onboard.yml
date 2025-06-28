@@ -72,6 +72,6 @@ jobs:
             It updates `.sops.yaml` and re-encrypts `.env.enc` to include the new
             public key(s) under `keys/*.asc`.
           # You can auto-assign reviewers or labels if you like:
-          reviewers: "alice,bob"
+          reviewers: "lstsk"
           labels: "ci,sops"
           commit-message: "chore: re-encrypt env for new teammate"
