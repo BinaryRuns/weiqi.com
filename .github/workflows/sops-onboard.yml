@@ -1,4 +1,9 @@
 # .github/workflows/sops-onboard.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+
 name: Refresh SOPS config
 
 on:
