@@ -30,10 +30,6 @@ jobs:
           sudo mv sops /usr/local/bin/
           sops --version
 
-      # 3) Ensure your update script is executable
-      - name: Make update script executable
-        run: chmod +x scripts/update-sops.sh
-
       # 4) Capture the runner's TTY for GPG
       - id: tty
         run: echo "tty=$(tty)" >> $GITHUB_OUTPUT
