@@ -10,6 +10,7 @@ on:
   push:
     paths:
       - "keys/*.asc"
+  workflow_dispatch: {}
 
 jobs:
   rebuild-secrets:
