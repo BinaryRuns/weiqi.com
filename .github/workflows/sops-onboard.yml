@@ -47,8 +47,18 @@ jobs:
           gpg --batch --import ci.key.asc
 
       - name: Import all teammates' public keys
+        shell: bash
         run: |
-          for pub in keys/*.asc; do
+          shopt -s nullglob
+
+          key_files=(keys/*.asc)
+
+          if [ ${#key_files[@]} -eq 0 ]; then
+            echo "⚠️  No public keys found in keys/*.asc — skipping import."
+            exit 0
+          fi
+
+          for pub in "${key_files[@]}"; do
             echo "🔑 Importing $pub"
             gpg --batch --import "$pub"
           done
