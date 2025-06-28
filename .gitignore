@@ -1,14 +1,12 @@
 # Environment files
 .env
 .env.*
-!.env.*.enc
+# But keep encrypted env files and the example
 !.env.enc
-!env.example
+!.env.*.enc
 
 # GPG keyring backups
 secring.gpg
 pubring.gpg
+pubring.kbx
 *.gpg~
-.env
-.env
-.env
