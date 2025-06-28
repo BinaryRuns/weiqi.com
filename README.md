@@ -105,27 +105,11 @@ git clone https://github.com/yourusername/weiqi.com.git
 cd weiqi.com
 ```
 
-### Environment Setup
-
-This project uses a unified `.env` file to manage environment variables for both frontend and backend:
-
-1. Copy the example environment file to create your local configuration:
-
-```bash
-cp .env.example .env
-```
-
-2. Edit the `.env` file to customize settings if necessary. The default values are suitable for local development.
-
-3. The environment variables will be automatically loaded by Docker Compose for all services.
-
-4. For local development outside Docker, you can:
-   - For Next.js frontend: Use the variables with `NEXT_PUBLIC_` prefix directly
-   - For Spring Boot backend: Pass the variables as command-line arguments or use application-local.properties
-
 ### Environment Variable Encryption with SOPS
 
 This project uses [Mozilla SOPS](https://github.com/mozilla/sops) for encrypting sensitive environment variables:
+
+#### Initial Setup
 
 1. Install SOPS following the [official documentation](https://github.com/mozilla/sops/releases)
 
@@ -145,45 +129,115 @@ This project uses [Mozilla SOPS](https://github.com/mozilla/sops) for encrypting
    gpg --list-secret-keys --keyid-format=long
 
    # Export your public key to share with team members
-   gpg --armor --export your-key-fingerprint > your-name-pubkey.asc
-
-   # Team members can import your key with
-   gpg --import your-name-pubkey.asc
+   gpg --armor --export your.email@example.com > your-name-pubkey.asc
    ```
 
-3. Update the `.sops.yaml` file with your GPG key fingerprint:
+#### Adding a New Team Member (Automated Process)
 
-   ```yaml
-   creation_rules:
-     - path_regex: (^|.*/)\.env$|.*\.env$
-       pgp: YOUR_GPG_KEY_FINGERPRINT
-       # For team collaboration, add multiple keys:
-       # pgp:
-       #   - TEAM_MEMBER_1_FINGERPRINT
-       #   - TEAM_MEMBER_2_FINGERPRINT
-   ```
+1. The new team member generates their GPG key and exports their public key as shown above
 
-4. The project is configured to encrypt `.env` files using PGP:
+2. Add the public key to the project's `keys/` directory:
 
    ```bash
-   # Encrypt an .env file
-   sops --encrypt .env > .env.enc
+   # From the project root
+   cp your-name-pubkey.asc keys/
 
-   # Decrypt an encrypted .env file
-   sops --decrypt .env.enc > .env
+   # Create a branch for your changes
+   git checkout -b add-gpg-key/your-name
 
-   # Edit an encrypted file directly
-   sops .env.enc
+   # Add and commit your public key
+   git add keys/your-name-pubkey.asc
+   git commit -m "Add [Your Name]'s GPG public key"
+
+   # Push the branch and create a pull request
+   git push -u origin add-gpg-key/your-name
+   # Then create a PR from your branch to main via GitHub interface
    ```
 
-5. For team collaboration:
+3. After your PR is reviewed and merged, the GitHub Actions workflow (`sops-onboard.yml`) will automatically:
 
-   - Each team member should generate their own GPG key
-   - Share public keys with the team (never share private keys)
-   - Add all team members' key fingerprints to the `.sops.yaml` file
-   - Everyone can now encrypt/decrypt using their own key
+   - Import all public keys from the `keys/` directory
+   - Update the `.sops.yaml` configuration with all fingerprints
+   - Re-encrypt all `.env.enc` files to include the new key
+   - Create a new pull request with these changes
 
-6. Important: Encrypted `.env.enc` files should be committed to the repository. The `.gitignore` file is configured to allow `.env.enc` files while ignoring unencrypted `.env` files.
+4. After an existing team member approves and merges this second PR:
+
+   ```bash
+   # Switch back to main and pull the latest changes
+   git checkout main
+   git pull
+
+   # Decrypt the environment file
+   sops --decrypt .env.enc > .env
+   ```
+
+#### Working with Encrypted Files
+
+```bash
+# Decrypt an encrypted .env file
+sops --decrypt .env.enc > .env
+
+# Edit an encrypted file directly (opens in your default editor)
+sops .env.enc
+
+# Re-encrypt after making changes
+./scripts/encrypt.sh
+```
+
+#### Key Rotation and Management
+
+To rotate your GPG key (recommended annually):
+
+1. Generate a new GPG key as shown in the initial setup
+
+2. Export your new public key and replace your old one:
+
+   ```bash
+   # Export your new public key
+   gpg --armor --export your.new.email@example.com > your-name-new-pubkey.asc
+
+   # Create a branch for your changes
+   git checkout -b rotate-gpg-key/your-name
+
+   # Replace your old key with the new one
+   mv your-name-new-pubkey.asc keys/your-name-pubkey.asc
+
+   # Commit and create a PR
+   git add keys/your-name-pubkey.asc
+   git commit -m "Rotate [Your Name]'s GPG key"
+   git push -u origin rotate-gpg-key/your-name
+   # Then create a PR from your branch to main via GitHub interface
+   ```
+
+3. After your PR is reviewed and merged, the GitHub workflow will automatically update all encrypted files via a second PR.
+
+To remove a team member:
+
+1. Remove their public key from the `keys/` directory:
+
+   ```bash
+   # Create a branch for the change
+   git checkout -b remove-team-member/former-teammate
+
+   # Remove their key
+   git rm keys/former-teammate-pubkey.asc
+   git commit -m "Remove [Former Teammate]'s GPG key"
+   git push -u origin remove-team-member/former-teammate
+   # Then create a PR from your branch to main via GitHub interface
+   ```
+
+2. After this PR is merged, the GitHub workflow will automatically re-encrypt all files without their key via a second PR.
+
+#### Best Practices
+
+- **Never commit unencrypted `.env` files** to the repository
+- Keep your GPG private key secure and never share it
+- Use a strong passphrase for your GPG key
+- Rotate your keys periodically (annually recommended)
+- Always pull the latest `.env.enc` before making changes
+
+The `.gitignore` file is configured to allow `.env.enc` files while ignoring unencrypted `.env` files.
 
 ### Running the Application
 
