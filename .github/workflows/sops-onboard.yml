@@ -17,8 +17,13 @@ jobs:
       # 2) Install sops so the runner can run your script
       - name: Install sops
         run: |
-          sudo apt-get update
-          sudo apt-get install -y sops
+          SOPS_VERSION=3.10.2
+          curl -fsSL \
+            -o sops \
+            https://github.com/mozilla/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64
+          chmod +x sops
+          sudo mv sops /usr/local/bin/
+          sops --version
 
       # 3) Ensure your update script is executable
       - name: Make update script executable
