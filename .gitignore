@@ -1,4 +1,5 @@
 # Environment files
+**/.env
 .env
 .env.*
 # But keep encrypted env files and the example

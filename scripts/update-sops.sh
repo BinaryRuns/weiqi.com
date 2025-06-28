@@ -1,35 +1,29 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
-# Enable nullglob so missing files result in an empty array\shopt -s nullglob
+# find every .env.enc under the repo
+mapfile -t env_files < <(find . -type f -name ".env.enc")
 
-ENV_FILE=".env.enc"
-
-# Exit early if encrypted file doesn't exist
-if [ ! -f "$ENV_FILE" ]; then
-  echo "⚠️  No $ENV_FILE found; skipping recipient rotation."
+if [ ${#env_files[@]} -eq 0 ]; then
+  echo "⚠️  No .env.enc files found; skipping rotation."
   exit 0
 fi
 
-# Gather public key files
+# gather fingerprints as before…
 pub_keys=(keys/*.asc)
-if [ ${#pub_keys[@]} -eq 0 ]; then
-  echo "↩️  No public keys found in keys/*.asc — nothing to do."
-  exit 0
-fi
-
-# Rotate recipients into the existing encrypted file
+declare -a fps=()
 for pub in "${pub_keys[@]}"; do
-  # Extract the full fingerprint
   fp=$(gpg --with-colons --import-options show-only --import "$pub" \
        | awk -F: '/^fpr:/ {print $10; exit}')
-  if [ -z "$fp" ]; then
-    echo "⚠️  Could not extract fingerprint from $pub; skipping."
-    continue
-  fi
-  echo "🔐 Rotating $ENV_FILE: adding recipient $fp"
-  # Use explicit dotenv format so SOPS doesn't try JSON
-  sops --input-type dotenv --output-type dotenv -i --rotate --add-pgp "$fp" "$ENV_FILE"
+  fps+=("$fp")
 done
 
-echo "✅  Rotation complete: $ENV_FILE now accessible by ${#pub_keys[@]} recipient(s)."
+# now rotate each encrypted file
+for file in "${env_files[@]}"; do
+  echo "🔄 Rotating recipients on $file"
+  for fp in "${fps[@]}"; do
+    sops --input-type dotenv --output-type dotenv -i \
+         --rotate --add-pgp "$fp" "$file"
+  done
+done
+
+echo "✅ Rotation complete on ${#env_files[@]} file(s)."
