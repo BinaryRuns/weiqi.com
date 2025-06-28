@@ -1,4 +1,5 @@
 creation_rules:
-  - path_regex: '(^|/)\.env(\.enc)?$'
-    encrypted_regex: "^(?!#).*"
+  - path_regex: '.*\.env(\.enc)?$'
+    encrypted_regex: '.*\.env(\.enc)?$'
     pgp:
+      - BB58AF94309753F6CDF13B57A9C2279290596F20
