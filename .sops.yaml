@@ -1,0 +1,4 @@
+---
+creation_rules:
+  - path_regex: (^|.*/)\.env$|.*\.env$
+    pgp: A42113A260AFDA3A

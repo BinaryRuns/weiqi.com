@@ -11,6 +11,7 @@ Weiqi.com is an online platform for playing the ancient board game **Go** (also 
 ## Features
 
 ### Core Features
+
 - **Real-Time Multiplayer**: Play Go against other players in real-time.
 - **Dynamic Rating System**: Track player skill levels using a dynamic rating system (e.g., Elo or Glicko).
 - **Match History**: View detailed records of past games, including moves and outcomes.
@@ -19,18 +20,21 @@ Weiqi.com is an online platform for playing the ancient board game **Go** (also 
 - **Spectator Mode**: Watch ongoing games in real-time.
 
 ### Gameplay Enhancements
+
 - **Custom Game Settings**: Adjust board size, komi, and handicaps.
 - **Resign Button**: Allow players to resign gracefully.
 - **Draw Offers**: Enable players to offer or accept draws.
 - **Game Analysis**: Analyze games with AI-powered tools and heatmaps.
 
 ### User Experience
+
 - **Player Profiles**: Display statistics, ratings, and achievements.
 - **Leaderboard**: Compete for the top spot on the global or regional leaderboard.
 - **Friend System**: Add friends and challenge them directly.
 - **Chat System**: Communicate with opponents and spectators during games.
 
 ### Technical Features
+
 - **JWT Authentication**: Secure user authentication and WebSocket communication.
 - **Reconnection Handling**: Gracefully handle player disconnections and reconnections.
 - **Scalable Backend**: Built to handle a large number of concurrent games and users.
@@ -57,6 +61,7 @@ Weiqi.com is an online platform for playing the ancient board game **Go** (also 
 ```
 
 ### Frontend (Next.js)
+
 - TypeScript-based React application
 - Responsive UI with Tailwind CSS
 - Go board rendering with custom components
@@ -64,6 +69,7 @@ Weiqi.com is an online platform for playing the ancient board game **Go** (also 
 - Redux for state management
 
 ### Backend (Spring Boot)
+
 - Java-based RESTful API
 - WebSocket support for real-time gameplay
 - JWT authentication and authorization
@@ -71,10 +77,12 @@ Weiqi.com is an online platform for playing the ancient board game **Go** (also 
 - Matchmaking system
 
 ### Data Persistence
+
 - PostgreSQL for user data, game records, and settings
 - Redis for caching, sessions, and real-time game state
 
 ### Communication
+
 - REST API for standard requests
 - WebSocket for real-time game events
 - JWT for secure authentication
@@ -114,6 +122,68 @@ cp .env.example .env
 4. For local development outside Docker, you can:
    - For Next.js frontend: Use the variables with `NEXT_PUBLIC_` prefix directly
    - For Spring Boot backend: Pass the variables as command-line arguments or use application-local.properties
+
+### Environment Variable Encryption with SOPS
+
+This project uses [Mozilla SOPS](https://github.com/mozilla/sops) for encrypting sensitive environment variables:
+
+1. Install SOPS following the [official documentation](https://github.com/mozilla/sops/releases)
+
+2. Set up GPG for encryption:
+
+   ```bash
+   # Install GPG if not already installed
+   # macOS: brew install gnupg
+   # Ubuntu/Debian: sudo apt-get install gnupg
+   # Windows: Download from https://www.gnupg.org/download/
+
+   # Generate a new GPG key
+   gpg --full-generate-key
+   # Select RSA and RSA, 4096 bits, and follow the prompts
+
+   # List your keys to get the fingerprint
+   gpg --list-secret-keys --keyid-format=long
+
+   # Export your public key to share with team members
+   gpg --armor --export your-key-fingerprint > your-name-pubkey.asc
+
+   # Team members can import your key with
+   gpg --import your-name-pubkey.asc
+   ```
+
+3. Update the `.sops.yaml` file with your GPG key fingerprint:
+
+   ```yaml
+   creation_rules:
+     - path_regex: (^|.*/)\.env$|.*\.env$
+       pgp: YOUR_GPG_KEY_FINGERPRINT
+       # For team collaboration, add multiple keys:
+       # pgp:
+       #   - TEAM_MEMBER_1_FINGERPRINT
+       #   - TEAM_MEMBER_2_FINGERPRINT
+   ```
+
+4. The project is configured to encrypt `.env` files using PGP:
+
+   ```bash
+   # Encrypt an .env file
+   sops --encrypt .env > .env.enc
+
+   # Decrypt an encrypted .env file
+   sops --decrypt .env.enc > .env
+
+   # Edit an encrypted file directly
+   sops .env.enc
+   ```
+
+5. For team collaboration:
+
+   - Each team member should generate their own GPG key
+   - Share public keys with the team (never share private keys)
+   - Add all team members' key fingerprints to the `.sops.yaml` file
+   - Everyone can now encrypt/decrypt using their own key
+
+6. Important: Encrypted `.env.enc` files should be committed to the repository. The `.gitignore` file is configured to allow `.env.enc` files while ignoring unencrypted `.env` files.
 
 ### Running the Application
 

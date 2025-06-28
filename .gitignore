@@ -1,1 +1,14 @@
+# Environment files
+.env
+.env.*
+!.env.*.enc
+!.env.enc
+!env.example
+
+# GPG keyring backups
+secring.gpg
+pubring.gpg
+*.gpg~
+.env
+.env
 .env
