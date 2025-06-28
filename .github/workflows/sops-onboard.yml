@@ -4,19 +4,31 @@ name: Refresh SOPS config
 on:
   push:
     paths:
-      - "keys/*.asc" # trigger when a new public key is added/changed
+      - "keys/*.asc"
 
 jobs:
   rebuild-secrets:
     runs-on: ubuntu-latest
+
     steps:
+      # 1) Checkout the repo
       - uses: actions/checkout@v3
 
-      # 1) Capture the runner's TTY, so GPG can prompt if it ever needed to
+      # 2) Install sops so the runner can run your script
+      - name: Install sops
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sops
+
+      # 3) Ensure your update script is executable
+      - name: Make update script executable
+        run: chmod +x scripts/update-sops.sh
+
+      # 4) Capture the runner’s TTY for GPG
       - id: tty
         run: echo "::set-output name=tty::$(tty)"
 
-      # 2) Import the CI GPG key (no passphrase needed)
+      # 5) Import the CI GPG private key (no passphrase needed)
       - name: Import CI’s GPG key
         env:
           GPG_TTY: ${{ steps.tty.outputs.tty }}
@@ -24,11 +36,11 @@ jobs:
           echo "${{ secrets.CI_GPG_PRIVATE }}" > ci.key.asc
           gpg --batch --import ci.key.asc
 
-      # 3) Rebuild .sops.yaml and re-encrypt .env
+      # 6) Rebuild .sops.yaml and re-encrypt .env → .env.enc
       - name: Rebuild SOPS config & re-encrypt
         run: bash scripts/update-sops.sh
 
-      # 4) Commit the updated files back to main
+      # 7) Commit & push the changes back to main
       - name: Commit & push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
