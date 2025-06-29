@@ -38,7 +38,8 @@ export default function GamePage() {
   // Get user data from Supabase
   const { user } = useSupabaseAuth();
   const userId = user?.id;
-  const userName = user?.user_metadata?.username || user?.email?.split('@')[0] || "User";
+  const userName =
+    user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
 
   // ----- Testing -----
   useEffect(() => {
@@ -143,15 +144,14 @@ export default function GamePage() {
    */
   const handleStonePlacement = (x: number, y: number) => {
     if (!gameState || gameOver || !isConnected || !userId) return;
-  
+
     send("/app/game.move", {
       roomId: params.gameId,
       userId,
       x,
-      y
+      y,
     });
   };
-  
 
   const sendMessage = () => {
     if (!isConnected || !messageInput.trim() || !userId || !userName) return;
@@ -209,23 +209,36 @@ export default function GamePage() {
                   ? gameState.blackTime
                   : gameState.whiteTime
               }
+              isActive={gameState.currentPlayerColor === opponent?.color}
               onTimeUp={() => alert(`${opponent?.userName}'s time is up!`)}
             />
           </div>
 
           <div className="flex-1 relative">
             <div className="absolute inset-0">
-            <GoBoard 
-                size={gameState?.boardSize || 19} 
-                initialStones={gameState?.stones?.map((row, y) => 
-                  row.map((color, x) => color ? { x, y, color } : null)
-                ).flat().filter((stone): stone is { x: number; y: number; color: "black" | "white" } => stone !== null) || []}
+              <GoBoard
+                size={gameState?.boardSize || 19}
+                initialStones={
+                  gameState?.stones
+                    ?.map((row, y) =>
+                      row.map((color, x) => (color ? { x, y, color } : null))
+                    )
+                    .flat()
+                    .filter(
+                      (
+                        stone
+                      ): stone is {
+                        x: number;
+                        y: number;
+                        color: "black" | "white";
+                      } => stone !== null
+                    ) || []
+                }
                 interactive={true}
                 onPlaceStone={(x, y) => handleStonePlacement(x, y)} // <-- Fix here
                 inGame={true}
                 showCoordinates={true}
               />
-
             </div>
           </div>
 
@@ -240,6 +253,7 @@ export default function GamePage() {
                   ? gameState.blackTime
                   : gameState.whiteTime
               }
+              isActive={gameState.currentPlayerColor === currentUser?.color}
               onTimeUp={() => alert(`${currentUser?.userName}'s time is up!`)}
             />
           </div>

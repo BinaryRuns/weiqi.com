@@ -11,6 +11,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Data
@@ -39,6 +41,12 @@ public class GameRoom implements Serializable {
     private String currentPlayerColor; // black or white
 
     private int moveCount = 0;
+    
+    // New fields for event-based timing
+    private Instant lastMoveTimestamp;
+    private Instant lastTimeUpdateTimestamp;
+    private Instant lastBroadcastTimestamp;
+    private boolean paused = false;
 
     public GameRoom(String roomName, int maxPlayers, int boardSize, TimeControl timeControl) {
         this.roomId = UUID.randomUUID().toString();
@@ -49,6 +57,12 @@ public class GameRoom implements Serializable {
         this.blackTime = timeControl.getInitialTime();
         this.whiteTime = timeControl.getInitialTime();
         this.currentPlayerColor = "black"; // black always start first
+        
+        // Initialize timestamps
+        Instant now = Instant.now();
+        this.lastMoveTimestamp = now;
+        this.lastTimeUpdateTimestamp = now;
+        this.lastBroadcastTimestamp = now;
 
         // Initialize the stones 2D list to all zeros(empty cells)
         initializeBoard(boardSize);
@@ -93,19 +107,67 @@ public class GameRoom implements Serializable {
         serializeStones(); // Update stonesJson after initialization
     }
 
-
-    public void decrementTimer() {
+    /**
+     * Updates the timers based on elapsed time since last update
+     * This replaces the old decrementTimer method
+     */
+    public void updateTimers() {
+        if (paused || lastTimeUpdateTimestamp == null) {
+            return;
+        }
+        
+        long elapsedSeconds = ChronoUnit.SECONDS.between(lastTimeUpdateTimestamp, Instant.now());
+        if (elapsedSeconds <= 0) {
+            return;
+        }
+        
         if ("black".equals(currentPlayerColor)) {
-            blackTime--;
+            blackTime -= elapsedSeconds;
         } else if ("white".equals(currentPlayerColor)) {
-            whiteTime--;
+            whiteTime -= elapsedSeconds;
+        }
+        
+        lastTimeUpdateTimestamp = Instant.now();
+    }
+
+    /**
+     * Apply time increment based on the time control settings
+     */
+    public void applyTimeIncrement() {
+        if (timeControl.getIncrement() <= 0) {
+            return;
+        }
+        
+        if ("black".equals(currentPlayerColor)) {
+            blackTime += timeControl.getIncrement();
+        } else if ("white".equals(currentPlayerColor)) {
+            whiteTime += timeControl.getIncrement();
         }
     }
 
+    /**
+     * Switch the current player and update timestamps
+     */
+    public void switchPlayer() {
+        currentPlayerColor = "black".equals(currentPlayerColor) ? "white" : "black";
+        lastMoveTimestamp = Instant.now();
+        lastTimeUpdateTimestamp = Instant.now();
+    }
+
+    /**
+     * Check if either player has run out of time
+     */
     public boolean isTimeout() {
         return blackTime <= 0 || whiteTime <= 0;
     }
 
+    /**
+     * Get the winner if there's a timeout
+     * @return "black" or "white" based on who didn't time out
+     */
+    public String getTimeoutWinner() {
+        return blackTime <= 0 ? "white" : "black";
+    }
 
     // Serialize the stones list to JSON
     private void serializeStones() {

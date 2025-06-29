@@ -18,8 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.*;
-
 import org.springframework.messaging.simp.user.SimpUserRegistry;
 
 @Service
@@ -27,13 +25,18 @@ public class GameRoomService {
     private final GameRoomRepository gameRoomRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final UserRepository userRepository;
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
-    private final Map<String, ScheduledFuture<?>> timers = new ConcurrentHashMap<>();
+    private final GameTimerService gameTimerService;
 
-    public GameRoomService(GameRoomRepository gameRoomRepository, SimpMessagingTemplate simpMessagingTemplate, UserRepository userRepository, SimpUserRegistry simpUserRegistry) {
+    public GameRoomService(
+            GameRoomRepository gameRoomRepository, 
+            SimpMessagingTemplate simpMessagingTemplate, 
+            UserRepository userRepository, 
+            SimpUserRegistry simpUserRegistry,
+            GameTimerService gameTimerService) {
         this.gameRoomRepository = gameRoomRepository;
         this.simpMessagingTemplate = simpMessagingTemplate;
         this.userRepository = userRepository;
+        this.gameTimerService = gameTimerService;
     }
 
     /**
@@ -162,9 +165,7 @@ public class GameRoomService {
         gameRoomRepository.save(gameRoom);
 
         if (gameRoom.getPlayers().isEmpty()) {
-            stopTimer(roomId);
             gameRoomRepository.delete(gameRoom);
-
             System.out.println("GameRoom " + roomId + " deleted as no players remain.");
         } else {
             simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
@@ -176,12 +177,10 @@ public class GameRoomService {
         GameRoom gameRoom = gameRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
 
-
         Player resigningPlayer = gameRoom.getPlayers().stream()
                 .filter(p -> p.getUserId().equals(userId))
                 .findFirst()
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-
 
         String winnerColor = resigningPlayer.getColor().equals("black") ? "white" : "black";
 
@@ -191,85 +190,11 @@ public class GameRoomService {
                 new ResignResponse(resigningPlayer.getUserName(), winnerColor)
         );
 
-        // Stop the Timer and clean up the room
-        stopTimer(roomId);
+        // Clean up the room
         gameRoomRepository.delete(gameRoom);
 
         System.out.println("User " + resigningPlayer.getUserName() + " resigned. Game ended.");
     }
-
-
-    private void startTimer(String roomId) {
-        if (timers.containsKey(roomId)) {
-            System.out.println("Timer for room " + roomId + " is already running.");
-            return;
-        }
-
-        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(() -> {
-            try {
-                onTimerTick(roomId);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }, 0, 1, TimeUnit.SECONDS);
-
-        timers.put(roomId, future);
-        System.out.println("Timer for room " + roomId + " has been started.");
-    }
-
-    private void stopTimer(String roomId) {
-        ScheduledFuture<?> future = timers.remove(roomId);
-        if (future != null) {
-            boolean canceled = future.cancel(true);
-            if (canceled) {
-                System.out.println("Timer for room " + roomId + " has been stopped.");
-            } else {
-                System.out.println("Failed to stop the timer for room " + roomId + ". It might already be executing.");
-            }
-        } else {
-            System.out.println("No active timer found for room " + roomId + ".");
-        }
-    }
-
-    private void onTimerTick(String roomId) {
-        if (!timers.containsKey(roomId)) {
-            System.out.println("Timer for room " + roomId + " was already stopped. Skipping tick.");
-            return; // Exit early if the timer is no longer active
-        }
-
-        try {
-            GameRoom room = gameRoomRepository.findById(roomId)
-                    .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
-
-            room.decrementTimer();
-
-            if (room.isTimeout()) {
-                simpMessagingTemplate.convertAndSend(
-                        "/topic/game/" + roomId + "/timeout",
-                        Map.of("winner", (room.getBlackTime() <= 0) ? "white" : "black")
-                );
-
-                stopTimer(roomId); // Stop the timer when the game ends
-                return;
-            }
-
-            simpMessagingTemplate.convertAndSend(
-                    "/topic/game/" + roomId + "/timer",
-                    new GameTimerResponse(room.getBlackTime(), room.getWhiteTime())
-            );
-
-            gameRoomRepository.save(room);
-
-        } catch (RoomNotFoundException e) {
-            System.out.println("Room " + roomId + " no longer exists. Stopping the timer.");
-            stopTimer(roomId); // Stop the timer if the room is not found
-        } catch (Exception e) {
-            System.out.println("Error during timer tick for room " + roomId + ": " + e.getMessage());
-            stopTimer(roomId); // Stop the timer on unexpected errors
-            e.printStackTrace();
-        }
-    }
-
 
     /**
      * Gets details for room by id
@@ -307,28 +232,44 @@ public class GameRoomService {
             throw new IllegalStateException("It's not your turn.");
         }
 
+        // Update timers before processing the move
+        gameRoom.updateTimers();
+        
+        // Apply time increment if using Fischer
+        if (gameRoom.getTimeControl().getIncrement() > 0) {
+            gameRoom.applyTimeIncrement();
+        }
+
         List<List<Integer>> updatedStones = GoGameLogic.placeMove(
                 gameRoom.getStones(), x, y, player.getColor()
         );
 
         gameRoom.setStones(updatedStones); // Place move
 
-        // Start timer on first move
-        if (!timers.containsKey(roomId)) {
-            startTimer(roomId);
-        }
-
         // Send sound notification before changing the turn
         sendSoundNotification(roomId, player.getColor());
 
-        gameRoom.setCurrentPlayerColor(player.getColor().equals("black") ? "white" : "black"); // Switch turn
-        gameRoomRepository.save(gameRoom); // Save changes
+        // Switch current player (also updates timestamps)
+        gameRoom.switchPlayer();
+        
+        // Save changes
+        gameRoomRepository.save(gameRoom); 
 
-        GameRoomResponse gameRoomDTO = convertToDTO(gameRoom); // Convert to DTO for frontend
+        // Send immediate timer update
+        gameTimerService.sendImmediateTimerUpdate(roomId);
+
+        // Broadcast the updated game state to all clients
+        GameRoomResponse gameRoomDTO = convertToDTO(gameRoom);
         simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-                new RoomEventResponse("UPDATE_BOARD", userId, gameRoomDTO)); // Broadcast the updated game state to all clients
+                new RoomEventResponse("UPDATE_BOARD", userId, gameRoomDTO)); 
     }
 
+    /**
+     * Save a game room to the repository
+     */
+    public void saveRoom(GameRoom gameRoom) {
+        gameRoomRepository.save(gameRoom);
+    }
 
     private void sendErrorToUser(String userId, String errorCode, String errorMessage) {
         System.out.println("Sending error to user: " + userId + " | Message: " + errorMessage);
@@ -378,6 +319,4 @@ public class GameRoomService {
                 gameRoom.getCurrentPlayerColor()
         );
     }
-
-
 }
