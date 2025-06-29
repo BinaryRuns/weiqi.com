@@ -1,0 +1,33 @@
+---
+description: Use this when dealing with environmet operations
+globs: 
+alwaysApply: false
+---
+# SOPS Workflow Guide
+
+This project uses Mozilla SOPS for secure environment variable management. Here's how the workflow operates:
+
+## Key Files
+
+- [scripts/encrypt.sh](mdc:scripts/encrypt.sh): Script to encrypt `.env` files to `.env.enc`
+- [scripts/decrypt.sh](mdc:scripts/decrypt.sh): Script to decrypt `.env.enc` files to `.env.dec`
+- [scripts/update-sops.sh](mdc:scripts/update-sops.sh): Updates `.sops.yaml` and re-encrypts files when keys change
+- [.github/workflows/sops-onboard.yml](mdc:.github/workflows/sops-onboard.yml): GitHub Action that automates key management
+
+## Workflow Overview
+
+1. Team members add their GPG public keys to the `keys/` directory
+2. When a PR with key changes is opened, the GitHub Action automatically:
+   - Updates the SOPS configuration
+   - Re-encrypts environment files
+   - Commits changes to the PR branch
+3. After merging, all team members can decrypt files using their own keys
+
+## Common Operations
+
+- Encrypt environment files: `./scripts/encrypt.sh`
+- Decrypt environment files: `./scripts/decrypt.sh`
+- Edit encrypted files directly: `sops .env.enc`
+
+See the [README.md](mdc:README.md) for detailed instructions on key management.
+

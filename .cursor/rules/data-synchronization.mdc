@@ -1,0 +1,346 @@
+---
+description: This guide outlines the standards and patterns for synchronizing data between the Next.js frontend and Spring Boot backend in the Weiqi.com project.
+globs: 
+alwaysApply: false
+---
+# Data Synchronization Standards
+
+This guide outlines the standards and patterns for synchronizing data between the Next.js frontend and Spring Boot backend in the Weiqi.com project.
+
+## State Management Principles
+
+### Frontend State Management
+
+The frontend uses a combination of React state, context, and Redux for state management:
+
+1. **Local Component State**: For UI-specific state that doesn't need to be shared
+2. **React Context**: For shared state that doesn't change frequently (e.g., theme, authentication)
+3. **Redux**: For complex application state that needs to be shared across components
+
+```typescript
+// Example Redux slice
+import { createSlice } from '@reduxjs/toolkit';
+
+export const gameSlice = createSlice({
+  name: 'game',
+  initialState: {
+    rooms: [],
+    activeRoom: null,
+    loading: false,
+    error: null
+  },
+  reducers: {
+    setRooms: (state, action) => {
+      state.rooms = action.payload;
+    },
+    setActiveRoom: (state, action) => {
+      state.activeRoom = action.payload;
+    },
+    // Other reducers...
+  }
+});
+```
+
+### Backend State Management
+
+The backend manages state using:
+
+1. **Database**: For persistent data
+2. **Redis**: For temporary data and caching
+3. **In-memory stores**: For active game sessions
+
+## Real-time Data Synchronization
+
+### WebSocket-based Synchronization
+
+For real-time features like game moves and chat:
+
+1. **Connection Setup**:
+   ```typescript
+   // Frontend
+   const { isConnected, subscribe, send } = useWebSocket();
+   ```
+
+2. **Subscription to Updates**:
+   ```typescript
+   // Frontend
+   useEffect(() => {
+     const subscription = subscribe(`/topic/game/${gameId}`, (data) => {
+       dispatch(updateGameState(data));
+     });
+     
+     return () => subscription?.unsubscribe();
+   }, [gameId, subscribe, dispatch]);
+   ```
+
+3. **Sending Updates**:
+   ```typescript
+   // Frontend
+   const makeMove = (x, y) => {
+     send(`/app/game/move/${gameId}`, { x, y, color });
+   };
+   ```
+
+4. **Backend Broadcasting**:
+   ```java
+   // Backend
+   @MessageMapping("/game.move/{roomId}")
+   @SendTo("/topic/game/{roomId}")
+   public GameStateResponse handleMove(@DestinationVariable String roomId, 
+                                      @Payload MoveMessage message) {
+     GameRoom gameRoom = gameService.processMove(roomId, message);
+     return new GameStateResponse(gameRoom);
+   }
+   ```
+
+### Polling-based Synchronization
+
+For less frequent updates:
+
+1. **Interval Polling**:
+   ```typescript
+   // Frontend
+   useEffect(() => {
+     const interval = setInterval(async () => {
+       const data = await fetchData();
+       dispatch(updateData(data));
+     }, 30000); // Poll every 30 seconds
+     
+     return () => clearInterval(interval);
+   }, [dispatch]);
+   ```
+
+2. **Backend Endpoints**:
+   ```java
+   // Backend
+   @GetMapping("/api/data")
+   public ResponseEntity<DataResponse> getData() {
+     DataResponse data = dataService.getLatestData();
+     return ResponseEntity.ok(data);
+   }
+   ```
+
+## Data Consistency Strategies
+
+### Optimistic Updates
+
+For better user experience, implement optimistic updates:
+
+```typescript
+// Frontend
+const handleAction = async (data) => {
+  // 1. Update local state immediately (optimistic)
+  dispatch(updateLocalState(data));
+  
+  try {
+    // 2. Send to server
+    const response = await fetchWithAuth('/api/endpoint', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    
+    // 3. Update with server response
+    const result = await response.json();
+    dispatch(updateConfirmedState(result));
+  } catch (error) {
+    // 4. Revert on error
+    dispatch(revertLocalState());
+    showError(error.message);
+  }
+};
+```
+
+### Conflict Resolution
+
+When conflicts occur between client and server state:
+
+1. **Last-Write-Wins**: Simple approach where the most recent update is accepted
+2. **Server Authority**: Server state always takes precedence
+3. **Merge Strategy**: Combine changes when possible
+
+```typescript
+// Frontend conflict resolution
+const resolveConflict = (clientState, serverState) => {
+  // Server authority example
+  return {
+    ...clientState,
+    ...serverState, // Server state overrides client state
+  };
+};
+```
+
+## Error Handling and Recovery
+
+### Network Error Handling
+
+```typescript
+// Frontend
+const fetchDataWithRetry = async (url, retries = 3, delay = 1000) => {
+  try {
+    const response = await fetchWithAuth(url);
+    return await response.json();
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchDataWithRetry(url, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+};
+```
+
+### Reconnection Strategy
+
+For WebSocket disconnections:
+
+```typescript
+// In WebSocketContext.tsx
+const connect = useCallback(() => {
+  if (!userId || !accessToken) return;
+  if (clientRef.current && clientRef.current.active) return;
+  
+  const client = new Client({
+    webSocketFactory: () => new SockJS(`/ws?token=${accessToken}`),
+    reconnectDelay: 5000, // Wait 5 seconds before reconnecting
+    heartbeatIncoming: 4000,
+    heartbeatOutgoing: 4000,
+    // Other configuration...
+  });
+
+  client.activate();
+  clientRef.current = client;
+}, [userId, accessToken]);
+```
+
+## Caching Strategies
+
+### Frontend Caching
+
+Use SWR (stale-while-revalidate) for data fetching and caching:
+
+```typescript
+import useSWR from 'swr';
+
+function Profile() {
+  const { data, error } = useSWR('/api/user', fetcher);
+  
+  if (error) return <div>Failed to load</div>;
+  if (!data) return <div>Loading...</div>;
+  
+  return <div>Hello {data.name}!</div>;
+}
+```
+
+### Backend Caching
+
+Use Redis for backend caching:
+
+```java
+@Service
+public class CacheService {
+    private final RedisTemplate<String, Object> redisTemplate;
+    
+    public CacheService(RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+    
+    public void cacheData(String key, Object data, long ttlSeconds) {
+        redisTemplate.opsForValue().set(key, data, ttlSeconds, TimeUnit.SECONDS);
+    }
+    
+    public Object getCachedData(String key) {
+        return redisTemplate.opsForValue().get(key);
+    }
+}
+```
+
+## Synchronization Patterns for Specific Features
+
+### Game State Synchronization
+
+```typescript
+// Frontend
+function GameBoard({ gameId }) {
+  const { subscribe, send } = useWebSocket();
+  const [gameState, setGameState] = useState(null);
+  
+  useEffect(() => {
+    const subscription = subscribe(`/topic/game/${gameId}`, (data) => {
+      setGameState(data);
+    });
+    
+    return () => subscription?.unsubscribe();
+  }, [gameId, subscribe]);
+  
+  const makeMove = (x, y) => {
+    send(`/app/game/move/${gameId}`, { x, y });
+  };
+  
+  // Render game board...
+}
+```
+
+### User Settings Synchronization
+
+```typescript
+// Frontend
+const updateSettings = async (settings) => {
+  try {
+    // Optimistic update
+    setLocalSettings(settings);
+    
+    // Send to server
+    await fetchWithAuth(`/api/user/settings/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(settings)
+    });
+  } catch (error) {
+    // Revert on error
+    setLocalSettings(previousSettings);
+    showError('Failed to update settings');
+  }
+};
+```
+
+## Performance Considerations
+
+### Payload Optimization
+
+1. **Minimize Payload Size**: Only send necessary data
+2. **Compression**: Use gzip compression for HTTP requests
+3. **Partial Updates**: Send only changed fields when possible
+
+### Batch Operations
+
+For multiple related operations:
+
+```typescript
+// Frontend
+const batchUpdate = async (operations) => {
+  const response = await fetchWithAuth('/api/batch', {
+    method: 'POST',
+    body: JSON.stringify({ operations })
+  });
+  return response.json();
+};
+```
+
+```java
+// Backend
+@PostMapping("/api/batch")
+public ResponseEntity<BatchResponse> processBatch(@RequestBody BatchRequest request) {
+    List<OperationResult> results = batchService.processOperations(request.getOperations());
+    return ResponseEntity.ok(new BatchResponse(results));
+}
+```
+
+## Reference Implementations
+
+For proper synchronization implementation, refer to:
+
+- [WebSocketContext.tsx](mdc:goweb/src/contexts/WebSocketContext.tsx) - WebSocket integration
+- [use-game-websocket.ts](mdc:goweb/src/hooks/use-game-websocket.ts) - Game-specific WebSocket hook
+- [api.ts](mdc:goweb/src/utils/api.ts) - API utilities with authentication
+- [GameController.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/controllers/GameController.java) - Backend WebSocket controller
+- [RedisConfig.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/configs/RedisConfig.java) - Redis caching configuration
+

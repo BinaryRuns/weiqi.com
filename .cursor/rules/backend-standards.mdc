@@ -1,0 +1,364 @@
+---
+description: When create backend service, API or database changes please refer to this guideline
+globs: 
+alwaysApply: false
+---
+# Backend Development Standards
+
+This guide outlines the standards and best practices for backend development in the Weiqi.com project, focusing on API endpoints, services, and database changes.
+
+## API Layer (Controllers)
+
+### Controller Structure
+
+```java
+@RestController
+@RequestMapping("/api/resource-name")
+public class ResourceController {
+
+    private final ResourceService resourceService;
+
+    // Constructor injection (preferred over @Autowired)
+    public ResourceController(ResourceService resourceService) {
+        this.resourceService = resourceService;
+    }
+
+    // Endpoints follow...
+}
+```
+
+### REST API Design
+
+1. **URL Naming**:
+   - Use kebab-case for URLs: `/api/game-rooms`
+   - Use plural nouns for collections: `/api/users`
+   - Use singular nouns for specific resources: `/api/users/{userId}`
+   - Nest related resources: `/api/users/{userId}/settings`
+
+2. **HTTP Methods**:
+   - `GET`: Retrieve resources
+   - `POST`: Create resources
+   - `PUT`: Update resources (full replacement)
+   - `PATCH`: Partial updates
+   - `DELETE`: Remove resources
+
+3. **Response Status Codes**:
+   - 200: Success
+   - 201: Created
+   - 204: No Content (successful deletion)
+   - 400: Bad Request
+   - 401: Unauthorized
+   - 403: Forbidden
+   - 404: Not Found
+   - 500: Server Error
+
+### WebSocket Controllers
+
+For real-time features, use the following pattern:
+
+```java
+@Controller
+public class GameSocketController {
+
+    private final GameService gameService;
+
+    public GameSocketController(GameService gameService) {
+        this.gameService = gameService;
+    }
+
+    @MessageMapping("/game.action")
+    @SendTo("/topic/game/{roomId}")
+    public GameActionResponse handleAction(@Payload GameActionRequest request) {
+        return gameService.processAction(request);
+    }
+}
+```
+
+### Documentation
+
+Document all endpoints with Javadoc:
+
+```java
+/**
+ * Retrieves user settings for the specified user.
+ *
+ * @param userId The user's unique identifier
+ * @return The user settings
+ * @throws EntityNotFoundException if the user is not found
+ */
+@GetMapping("/{userId}")
+public ResponseEntity<UserSettingsDto> getUserSettings(@PathVariable String userId) {
+    // Implementation
+}
+```
+
+## Service Layer
+
+### Service Structure
+
+```java
+@Service
+public class ResourceService {
+
+    private final ResourceRepository resourceRepository;
+    private final ResourceMapper resourceMapper;
+
+    // Constructor injection
+    public ResourceService(ResourceRepository resourceRepository, 
+                          ResourceMapper resourceMapper) {
+        this.resourceRepository = resourceRepository;
+        this.resourceMapper = resourceMapper;
+    }
+
+    // Service methods follow...
+}
+```
+
+### Service Layer Responsibilities
+
+1. **Business Logic**: Implement all business rules and validation
+2. **Transaction Management**: Use `@Transactional` for operations that modify data
+3. **Exception Handling**: Throw appropriate exceptions for error conditions
+4. **Mapping**: Convert between entities and DTOs using mappers
+
+### Example Service Method
+
+```java
+/**
+ * Updates user settings for the specified user.
+ *
+ * @param userId The user's unique identifier
+ * @param settings The settings to update
+ * @throws EntityNotFoundException if the user is not found
+ */
+@Transactional
+public void updateUserSettings(String userId, UserSettingsDto settings) {
+    UserEntity user = userRepository.findBySupabaseUserId(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    
+    // Update user fields
+    if (settings.getUsername() != null) {
+        user.setUsername(settings.getUsername());
+    }
+    
+    userRepository.save(user);
+    
+    // Update related settings
+    UserSettingsEntity userSettings = userSettingsRepository.findByUser(user)
+            .orElseThrow(() -> new EntityNotFoundException("Settings not found"));
+    
+    userSettingsMapper.updateEntityFromDto(settings, userSettings);
+    userSettingsRepository.save(userSettings);
+}
+```
+
+## Data Access Layer
+
+### Entity Design
+
+```java
+@Entity
+@Table(name = "table_name")
+@Data // Lombok annotation
+@NoArgsConstructor
+public class EntityName {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false, length = 100)
+    private String name;
+    
+    @Column(length = 1000)
+    private String description;
+    
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+    
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}
+```
+
+### Entity Relationships
+
+1. **One-to-One**:
+   ```java
+   @OneToOne(fetch = FetchType.LAZY)
+   @JoinColumn(name = "settings_id")
+   private UserSettings settings;
+   ```
+
+2. **One-to-Many**:
+   ```java
+   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+   private List<GameRecord> gameRecords = new ArrayList<>();
+   ```
+
+3. **Many-to-One**:
+   ```java
+   @ManyToOne(fetch = FetchType.LAZY)
+   @JoinColumn(name = "user_id", nullable = false)
+   private UserEntity user;
+   ```
+
+4. **Many-to-Many**:
+   ```java
+   @ManyToMany
+   @JoinTable(
+       name = "user_friends",
+       joinColumns = @JoinColumn(name = "user_id"),
+       inverseJoinColumns = @JoinColumn(name = "friend_id")
+   )
+   private Set<UserEntity> friends = new HashSet<>();
+   ```
+
+### Repository Pattern
+
+```java
+public interface ResourceRepository extends JpaRepository<ResourceEntity, Long> {
+    Optional<ResourceEntity> findByName(String name);
+    
+    @Query("SELECT r FROM ResourceEntity r WHERE r.type = :type AND r.active = true")
+    List<ResourceEntity> findActiveByType(@Param("type") String type);
+}
+```
+
+### Data Transfer Objects (DTOs)
+
+Use DTOs to transfer data between layers:
+
+```java
+@Data
+public class UserSettingsDto {
+    private String username;
+    private String email;
+    private String theme;
+    private String language;
+    private Boolean notifications;
+    // Other fields...
+}
+```
+
+### Mappers
+
+Use MapStruct for object mapping:
+
+```java
+@Mapper(componentModel = "spring")
+public interface UserMapper {
+    @Mapping(source = "user.username", target = "username")
+    @Mapping(source = "user.email", target = "email")
+    UserSettingsDto toDto(UserSettingsEntity entity);
+    
+    @Mapping(target = "id", ignore = true)
+    void updateEntityFromDto(UserSettingsDto dto, @MappingTarget UserSettingsEntity entity);
+}
+```
+
+## Database Schema Evolution
+
+### Development Environment
+
+For development, use Hibernate's auto-schema update:
+
+```properties
+spring.jpa.hibernate.ddl-auto=update
+```
+
+### Production Environment
+
+For production, implement proper migration tools:
+
+#### Flyway Implementation
+
+1. Add dependency:
+   ```xml
+   <dependency>
+       <groupId>org.flywaydb</groupId>
+       <artifactId>flyway-core</artifactId>
+   </dependency>
+   ```
+
+2. Create migration scripts in `src/main/resources/db/migration`:
+   ```sql
+   -- V1__Create_user_table.sql
+   CREATE TABLE users (
+       id BIGSERIAL PRIMARY KEY,
+       username VARCHAR(100) NOT NULL UNIQUE,
+       email VARCHAR(255) NOT NULL UNIQUE,
+       created_at TIMESTAMP NOT NULL DEFAULT NOW()
+   );
+   ```
+
+3. Configure in `application.properties`:
+   ```properties
+   spring.flyway.enabled=true
+   spring.flyway.baseline-on-migrate=true
+   spring.jpa.hibernate.ddl-auto=validate
+   ```
+
+## Error Handling
+
+### Global Exception Handler
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex) {
+        ErrorResponse error = new ErrorResponse("RESOURCE_NOT_FOUND", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+    
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
+        List<String> errors = ex.getBindingResult().getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.toList());
+        
+        ErrorResponse error = new ErrorResponse("VALIDATION_FAILED", "Validation failed", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+}
+```
+
+## Security
+
+### Authentication & Authorization
+
+1. Update [SecurityConfig.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/configs/SecurityConfig.java) to protect new endpoints
+2. Use the Supabase JWT authentication filter
+3. Get authenticated user in controllers:
+
+```java
+@GetMapping("/me")
+public ResponseEntity<?> getCurrentUser() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    String userId = authentication.getName(); // Supabase user ID
+    
+    // Proceed with authorized operation
+}
+```
+
+## Best Practices
+
+1. **Validation**: Use Bean Validation (JSR-380) annotations on DTOs
+2. **Pagination**: Support pagination for queries that return large result sets
+3. **Logging**: Use SLF4J for consistent logging
+4. **Testing**: Write unit and integration tests for all new code
+5. **Transactions**: Use `@Transactional` appropriately
+
+## Reference Implementations
+
+See these examples for proper implementation:
+
+- [UserSettingsController](mdc:goweb-spring/src/main/java/com/example/goweb_spring/controllers/UserSettingsController.java)
+- [GameRoomService](mdc:goweb-spring/src/main/java/com/example/goweb_spring/services/GameRoomService.java)
+- [UserEntity](mdc:goweb-spring/src/main/java/com/example/goweb_spring/entities/UserEntity.java)
+- [UserSettingsMapper](mdc:goweb-spring/src/main/java/com/example/goweb_spring/mapper/UserSettingsMapper.java)
+

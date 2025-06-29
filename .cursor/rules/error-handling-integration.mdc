@@ -1,0 +1,474 @@
+---
+description: This guide outlines the standards and patterns for error handling and debugging in the integration between the Next.js frontend and Spring Boot backend in the Weiqi.com project.
+globs: 
+alwaysApply: false
+---
+# Error Handling and Debugging in Frontend-Backend Integration
+
+This guide outlines the standards and patterns for error handling and debugging in the integration between the Next.js frontend and Spring Boot backend in the Weiqi.com project.
+
+## Error Format Standards
+
+### Backend Error Format
+
+All backend errors should follow a consistent structure:
+
+```java
+public class ErrorMessage {
+    private int statusCode;
+    private String message;
+    private String details;
+    private LocalDateTime timestamp;
+    
+    // Constructors, getters, and setters
+}
+```
+
+Example error response:
+```json
+{
+  "statusCode": 404,
+  "message": "Resource not found",
+  "details": "Game with ID 12345 does not exist",
+  "timestamp": "2023-05-15T14:30:45.123Z"
+}
+```
+
+### Frontend Error Handling
+
+Frontend should handle errors consistently:
+
+```typescript
+const fetchData = async () => {
+  try {
+    const response = await fetchWithAuth('/api/endpoint');
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'An error occurred');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    // Log the error
+    console.error('API Error:', error);
+    
+    // Show user-friendly message
+    showErrorToast(error.message || 'Failed to fetch data');
+    
+    // Optionally rethrow for component handling
+    throw error;
+  }
+};
+```
+
+## Exception Handling
+
+### Backend Exception Handlers
+
+Use Spring's `@ControllerAdvice` to handle exceptions globally:
+
+```java
+@ControllerAdvice
+public class GlobalExceptionHandler {
+    
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorMessage> handleResourceNotFoundException(
+            ResourceNotFoundException ex, WebRequest request) {
+        
+        logger.error("Resource not found: {}", ex.getMessage());
+        
+        ErrorMessage errorMessage = new ErrorMessage(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            request.getDescription(false),
+            LocalDateTime.now()
+        );
+        
+        return new ResponseEntity<>(errorMessage, HttpStatus.NOT_FOUND);
+    }
+    
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorMessage> handleValidationException(
+            ValidationException ex, WebRequest request) {
+        
+        logger.error("Validation error: {}", ex.getMessage());
+        
+        ErrorMessage errorMessage = new ErrorMessage(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            request.getDescription(false),
+            LocalDateTime.now()
+        );
+        
+        return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
+    }
+    
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorMessage> handleGlobalException(
+            Exception ex, WebRequest request) {
+        
+        logger.error("Unhandled exception:", ex);
+        
+        ErrorMessage errorMessage = new ErrorMessage(
+            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+            "An unexpected error occurred",
+            request.getDescription(false),
+            LocalDateTime.now()
+        );
+        
+        return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+```
+
+### Custom Exception Types
+
+Define custom exceptions for specific error scenarios:
+
+```java
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+
+public class ValidationException extends RuntimeException {
+    public ValidationException(String message) {
+        super(message);
+    }
+}
+
+public class AuthenticationException extends RuntimeException {
+    public AuthenticationException(String message) {
+        super(message);
+    }
+}
+```
+
+## WebSocket Error Handling
+
+### Backend WebSocket Error Handling
+
+Handle WebSocket errors in the backend:
+
+```java
+@MessageExceptionHandler
+public void handleException(Exception ex, Principal principal) {
+    logger.error("WebSocket error for user {}: {}", 
+                principal != null ? principal.getName() : "unknown", 
+                ex.getMessage());
+                
+    // Send error message to the user
+    messagingTemplate.convertAndSendToUser(
+        principal.getName(),
+        "/queue/errors",
+        new ErrorMessage(500, ex.getMessage(), null, LocalDateTime.now())
+    );
+}
+```
+
+### Frontend WebSocket Error Handling
+
+Handle WebSocket errors in the frontend:
+
+```typescript
+// In WebSocketContext.tsx
+const client = new Client({
+  // Other configuration...
+  
+  onStompError: (frame: IFrame) => {
+    console.error("WebSocket error:", frame.headers["message"]);
+    console.error("Additional details:", frame.body);
+    
+    // Notify user
+    toast.error(`WebSocket error: ${frame.headers["message"]}`);
+  },
+});
+
+// Subscribe to personal error channel
+useEffect(() => {
+  if (!isConnected || !userId) return;
+  
+  const errorSubscription = subscribe(`/user/queue/errors`, (error: ErrorMessage) => {
+    console.error("Received error from server:", error);
+    toast.error(error.message);
+  });
+  
+  return () => errorSubscription?.unsubscribe();
+}, [isConnected, userId, subscribe]);
+```
+
+## Logging Standards
+
+### Backend Logging
+
+Use SLF4J with logback for backend logging:
+
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class GameService {
+    private static final Logger logger = LoggerFactory.getLogger(GameService.class);
+    
+    public GameRoom createGame(CreateGameRequest request) {
+        logger.info("Creating new game with settings: {}", request);
+        
+        try {
+            // Game creation logic
+            GameRoom gameRoom = new GameRoom();
+            // ...
+            
+            logger.info("Game created successfully with ID: {}", gameRoom.getRoomId());
+            return gameRoom;
+        } catch (Exception e) {
+            logger.error("Failed to create game: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+}
+```
+
+### Frontend Logging
+
+Use structured logging in the frontend:
+
+```typescript
+// logger.ts
+export const logger = {
+  info: (message: string, data?: any) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.info(`[INFO] ${message}`, data || '');
+    }
+    // In production, could send to a logging service
+  },
+  
+  error: (message: string, error?: any) => {
+    console.error(`[ERROR] ${message}`, error || '');
+    // In production, send to error tracking service
+    if (process.env.NODE_ENV === 'production') {
+      // Example: Sentry.captureException(error);
+    }
+  },
+  
+  warn: (message: string, data?: any) => {
+    console.warn(`[WARN] ${message}`, data || '');
+  },
+  
+  debug: (message: string, data?: any) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug(`[DEBUG] ${message}`, data || '');
+    }
+  }
+};
+```
+
+## Debugging Tools and Techniques
+
+### API Request Debugging
+
+#### Backend Request Logging
+
+Use a filter to log all API requests:
+
+```java
+@Component
+public class RequestLoggingFilter extends OncePerRequestFilter {
+    
+    private static final Logger logger = LoggerFactory.getLogger(RequestLoggingFilter.class);
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, 
+                                   HttpServletResponse response, 
+                                   FilterChain filterChain) throws ServletException, IOException {
+        
+        long startTime = System.currentTimeMillis();
+        
+        // Log request details
+        logger.info("REQUEST: {} {} [{}]", 
+                   request.getMethod(), 
+                   request.getRequestURI(),
+                   request.getRemoteAddr());
+        
+        // Continue with the request
+        filterChain.doFilter(request, response);
+        
+        // Log response details
+        long duration = System.currentTimeMillis() - startTime;
+        logger.info("RESPONSE: {} {} - {} ({} ms)", 
+                   request.getMethod(), 
+                   request.getRequestURI(), 
+                   response.getStatus(),
+                   duration);
+    }
+}
+```
+
+#### Frontend Request Debugging
+
+Use interceptors to log API requests:
+
+```typescript
+// In api.ts
+const logRequest = async (url: string, options: RequestInit = {}) => {
+  console.debug(`🚀 Request: ${options.method || 'GET'} ${url}`);
+  
+  const startTime = performance.now();
+  try {
+    const response = await fetch(url, options);
+    const duration = performance.now() - startTime;
+    
+    console.debug(`✅ Response: ${response.status} ${url} (${duration.toFixed(2)}ms)`);
+    return response;
+  } catch (error) {
+    const duration = performance.now() - startTime;
+    console.error(`❌ Error: ${error.message} ${url} (${duration.toFixed(2)}ms)`);
+    throw error;
+  }
+};
+```
+
+### WebSocket Debugging
+
+#### Backend WebSocket Debugging
+
+Enable STOMP debug logging:
+
+```properties
+# application.properties
+logging.level.org.springframework.messaging=DEBUG
+logging.level.org.springframework.web.socket=DEBUG
+```
+
+#### Frontend WebSocket Debugging
+
+Enable STOMP client debugging:
+
+```typescript
+const client = new Client({
+  // Other configuration...
+  debug: (msg) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[WS]', msg);
+    }
+  },
+});
+```
+
+## Error Monitoring and Reporting
+
+### Backend Error Monitoring
+
+Configure error reporting:
+
+```java
+@Configuration
+public class MonitoringConfig {
+    
+    @Bean
+    public ErrorReporter errorReporter() {
+        // Configure error reporting service
+        // Example: Sentry, New Relic, etc.
+        return new ErrorReporter();
+    }
+}
+
+@Component
+public class ErrorReporter {
+    
+    public void reportError(Exception ex, String context) {
+        // Send error to monitoring service
+        // Example: Sentry.capture(ex);
+    }
+}
+```
+
+### Frontend Error Monitoring
+
+Set up global error boundary:
+
+```tsx
+// In _app.tsx
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <div role="alert">
+      <h2>Something went wrong:</h2>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+}
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <ErrorBoundary 
+      FallbackComponent={ErrorFallback}
+      onError={(error, info) => {
+        // Log to error monitoring service
+        console.error('Unhandled error:', error);
+        // Example: Sentry.captureException(error);
+      }}
+    >
+      <Component {...pageProps} />
+    </ErrorBoundary>
+  );
+}
+```
+
+## Troubleshooting Common Integration Issues
+
+### Authentication Issues
+
+Common authentication issues and solutions:
+
+1. **401 Unauthorized Errors**:
+   - Check that the JWT token is being sent correctly
+   - Verify token expiration and refresh logic
+   - Ensure the JWT secret matches between Supabase and backend
+
+2. **CORS Issues**:
+   - Check backend CORS configuration
+   - Ensure frontend is sending requests from allowed origins
+
+### WebSocket Connection Issues
+
+Common WebSocket issues and solutions:
+
+1. **Connection Failures**:
+   - Verify WebSocket endpoint URL is correct
+   - Check authentication token is being passed
+   - Ensure STOMP client configuration is correct
+
+2. **Message Delivery Issues**:
+   - Check subscription paths match sending paths
+   - Verify message format matches expected format
+   - Look for serialization/deserialization issues
+
+### Data Synchronization Issues
+
+Common data sync issues and solutions:
+
+1. **Stale Data**:
+   - Implement proper caching invalidation
+   - Add version or timestamp to data objects
+   - Use optimistic updates with server validation
+
+2. **Race Conditions**:
+   - Implement proper locking mechanisms on the backend
+   - Use idempotent operations where possible
+   - Add request IDs to track and deduplicate requests
+
+## Reference Implementations
+
+For proper error handling implementation, refer to:
+
+- [GlobalExceptionHandler.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/exceptions/GlobalExceptionHandler.java) - Backend global exception handler
+- [api.ts](mdc:goweb/src/utils/api.ts) - Frontend API utilities with error handling
+- [WebSocketContext.tsx](mdc:goweb/src/contexts/WebSocketContext.tsx) - WebSocket error handling
+

@@ -1,0 +1,331 @@
+---
+description: This guide outlines the standards and patterns for integrating the Next.js frontend with the Spring Boot backend in the Weiqi.com project.
+globs: 
+alwaysApply: false
+---
+# Frontend-Backend Integration Standards
+
+This guide outlines the standards and patterns for integrating the Next.js frontend with the Spring Boot backend in the Weiqi.com project.
+
+## Architecture Overview
+
+The application uses a client-server architecture:
+- Frontend: Next.js application (TypeScript)
+- Backend: Spring Boot application (Java)
+- Communication: REST APIs and WebSockets
+- Authentication: Supabase Auth with JWT tokens
+
+## API Communication
+
+### API Request Flow
+
+1. Frontend makes authenticated requests using the `fetchWithAuth` utility
+2. Next.js API routes proxy requests to the backend
+3. Backend validates JWT tokens and processes requests
+
+### Frontend API Utilities
+
+Use the `fetchWithAuth` utility for all API calls:
+
+```typescript
+import { fetchWithAuth } from "@/utils/api";
+
+// GET request example
+const getData = async () => {
+  const response = await fetchWithAuth('/api/endpoint');
+  return response.json();
+};
+
+// POST request example
+const createData = async (data) => {
+  const response = await fetchWithAuth('/api/endpoint', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+  return response.json();
+};
+```
+
+### API Endpoint Structure
+
+Backend API endpoints follow REST conventions:
+
+```java
+@RestController
+@RequestMapping("/api/resource-name")
+public class ResourceController {
+    // GET collection
+    @GetMapping
+    public List<Resource> getAll() { ... }
+    
+    // GET single resource
+    @GetMapping("/{id}")
+    public Resource getById(@PathVariable String id) { ... }
+    
+    // POST new resource
+    @PostMapping
+    public Resource create(@RequestBody ResourceDTO dto) { ... }
+    
+    // PUT update resource
+    @PutMapping("/{id}")
+    public Resource update(@PathVariable String id, @RequestBody ResourceDTO dto) { ... }
+    
+    // DELETE resource
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable String id) { ... }
+}
+```
+
+## WebSocket Integration
+
+### WebSocket Connection
+
+Frontend connects to WebSockets using the WebSocketContext provider:
+
+```tsx
+// In _app.tsx or layout.tsx
+<WebSocketProvider>
+  <App />
+</WebSocketProvider>
+```
+
+### Using WebSockets in Components
+
+```tsx
+import { useWebSocket } from "@/contexts/WebSocketContext";
+
+function GameComponent() {
+  const { isConnected, subscribe, send } = useWebSocket();
+  
+  useEffect(() => {
+    if (!isConnected) return;
+    
+    const subscription = subscribe(`/topic/game/${gameId}`, (data) => {
+      // Handle incoming messages
+    });
+    
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [isConnected, gameId, subscribe]);
+  
+  const sendMove = (x, y) => {
+    send(`/app/game/move/${gameId}`, { x, y });
+  };
+  
+  return (/* component JSX */);
+}
+```
+
+### Backend WebSocket Configuration
+
+```java
+@Configuration
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.addEndpoint("/ws")
+                .setHandshakeHandler(userInterceptor)
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
+    }
+
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry registry) {
+        registry.enableSimpleBroker("/topic", "/queue");
+        registry.setUserDestinationPrefix("/user");
+        registry.setApplicationDestinationPrefixes("/app");
+    }
+}
+```
+
+### WebSocket Message Handlers
+
+```java
+@Controller
+public class GameController {
+    @MessageMapping("/game.move/{roomId}")
+    @SendTo("/topic/game/{roomId}")
+    public GameStateResponse handleMove(@DestinationVariable String roomId, 
+                                       @Payload MoveMessage message) {
+        // Process move and return updated game state
+    }
+}
+```
+
+## Authentication Flow
+
+### Token-Based Authentication
+
+1. Frontend authenticates with Supabase
+2. Supabase JWT token is included in all API requests
+3. Backend validates the token using the Supabase JWT secret
+
+### Frontend Authentication
+
+```typescript
+// Fetch with authentication
+const response = await fetchWithAuth('/api/endpoint', {
+  method: 'POST',
+  body: JSON.stringify(data)
+});
+
+// WebSocket connection with token
+const socket = new SockJS(`/ws?token=${accessToken}`);
+```
+
+### Backend Authentication Filter
+
+```java
+public class SupabaseAuthenticationFilter extends OncePerRequestFilter {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, 
+                                   HttpServletResponse response, 
+                                   FilterChain filterChain) {
+        // Extract token from Authorization header
+        // Validate token using Supabase JWT secret
+        // Set Authentication in SecurityContext
+    }
+}
+```
+
+## Data Transfer Objects (DTOs)
+
+### Game-Related DTOs
+
+Frontend and backend should use consistent data structures:
+
+#### Frontend (TypeScript)
+```typescript
+interface GameRoom {
+  roomId: string;
+  players: Player[];
+  board: StoneColor[][];
+  currentPlayer: StoneColor;
+  gameStatus: GameStatus;
+  moveHistory: Move[];
+}
+```
+
+#### Backend (Java)
+```java
+public class GameRoomResponse {
+    private String roomId;
+    private List<Player> players;
+    private List<List<Integer>> board;
+    private String currentPlayer;
+    private GameStatus gameStatus;
+    private List<Move> moveHistory;
+}
+```
+
+## Error Handling
+
+### API Error Responses
+
+Backend should return consistent error responses:
+
+```java
+@ExceptionHandler(Exception.class)
+public ResponseEntity<ErrorMessage> handleException(Exception ex) {
+    ErrorMessage errorMessage = new ErrorMessage(
+        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+        ex.getMessage()
+    );
+    return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+}
+```
+
+Frontend should handle these errors:
+
+```typescript
+try {
+  const response = await fetchWithAuth('/api/endpoint');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message);
+  }
+  return await response.json();
+} catch (error) {
+  // Handle error
+}
+```
+
+## Environment Configuration
+
+### API URL Configuration
+
+Configure API URLs in environment variables:
+
+```
+# Frontend (.env.local)
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_WS_URL=http://localhost:8080/ws
+
+# Backend (application.properties)
+server.port=8080
+```
+
+### Next.js API Proxy
+
+Configure Next.js to proxy API requests to the backend:
+
+```typescript
+// next.config.js
+const nextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://backend:8080/api/:path*",
+      },
+    ];
+  },
+};
+```
+
+## Testing Integration
+
+### Frontend API Mocking
+
+Use MSW (Mock Service Worker) to mock API responses in frontend tests:
+
+```typescript
+// src/mocks/handlers.ts
+import { rest } from 'msw';
+
+export const handlers = [
+  rest.get('/api/endpoint', (req, res, ctx) => {
+    return res(ctx.json({ data: 'mocked data' }));
+  }),
+];
+```
+
+### Backend Integration Tests
+
+Write integration tests for API endpoints:
+
+```java
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+public class ApiIntegrationTest {
+    @Autowired
+    private TestRestTemplate restTemplate;
+    
+    @Test
+    public void testEndpoint() {
+        ResponseEntity<Resource> response = restTemplate.getForEntity(
+            "/api/endpoint", Resource.class);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+}
+```
+
+## Reference Implementations
+
+For proper integration implementation, refer to:
+
+- [WebSocketContext.tsx](mdc:goweb/src/contexts/WebSocketContext.tsx) - Frontend WebSocket context
+- [api.ts](mdc:goweb/src/utils/api.ts) - Frontend API utilities
+- [GameController.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/controllers/GameController.java) - Backend WebSocket controller
+- [SecurityConfig.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/configs/SecurityConfig.java) - Backend security configuration 

@@ -1,0 +1,43 @@
+---
+description: Standard when dealing with environments
+globs: 
+alwaysApply: false
+---
+# Environment Variables Management
+
+This project uses encrypted environment variables to manage configuration across environments.
+
+## Environment Files
+
+- `.env.enc`: Encrypted environment variables (committed to the repository)
+- `.env.dec`: Decrypted environment variables (generated locally, not committed)
+- `.env.example`: Example environment file with placeholder values
+
+## Key Environment Variables
+
+The project requires several environment variables for different components:
+
+### Frontend (Next.js)
+
+Frontend environment variables are prefixed with `NEXT_PUBLIC_`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### Backend (Spring Boot)
+
+Backend environment variables are configured in `application.properties`:
+
+```
+supabase.jwt.secret=${SUPABASE_JWT_SECRET}
+supabase.url=${SUPABASE_URL}
+```
+
+## Security
+
+- Never commit unencrypted `.env` files
+- Use SOPS for encryption/decryption (see [scripts/encrypt.sh](mdc:scripts/encrypt.sh) and [scripts/decrypt.sh](mdc:scripts/decrypt.sh))
+- Refer to [docs/sops-guide.md](mdc:docs/sops-guide.md) for detailed SOPS usage instructions
+

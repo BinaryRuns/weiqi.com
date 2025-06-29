@@ -1,0 +1,291 @@
+---
+description: Use this when creating new features dealing with UI to ensure consistency 
+globs: 
+alwaysApply: false
+---
+# UI Development Standards
+
+This guide outlines the standards and best practices for UI development in the Weiqi.com project to ensure consistency across the application.
+
+## Component Library
+
+The project uses [shadcn/ui](mdc:https:/ui.shadcn.com) components built on top of Tailwind CSS and Radix UI. These components are located in [components/ui/](mdc:goweb/src/components/ui).
+
+### Core UI Components
+
+- [Button](mdc:goweb/src/components/ui/button.tsx) - Primary interactive element
+- [Card](mdc:goweb/src/components/ui/card.tsx) - Container for related content
+- [Dialog](mdc:goweb/src/components/ui/dialog.tsx) - Modal dialogs
+- [Form](mdc:goweb/src/components/ui/form.tsx) - Form elements with validation
+- [Input](mdc:goweb/src/components/ui/input.tsx) - Text input fields
+
+## Styling Guidelines
+
+### Theme System
+
+The application uses a theme system with CSS variables defined in [globals.css](mdc:goweb/src/app/globals.css). The theme is managed through the [ThemeProvider](mdc:goweb/src/components/theme-provider.tsx).
+
+```tsx
+// Example of proper theme usage
+import { ThemeProvider } from "@/components/theme-provider";
+
+export function MyComponent({ children }) {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      {children}
+    </ThemeProvider>
+  );
+}
+```
+
+### Color Palette
+
+Always use the semantic color variables from the theme system:
+
+- Background: `bg-background`, `bg-card`, `bg-sidebar`
+- Text: `text-foreground`, `text-muted-foreground`
+- Accent: `bg-primary`, `bg-secondary`, `bg-accent`
+- Status: `bg-destructive`
+
+Avoid using hardcoded colors. Instead, use the CSS variables defined in the theme.
+
+### Spacing and Layout
+
+Follow these spacing guidelines:
+
+- Use Tailwind's spacing scale (`p-4`, `m-2`, etc.)
+- For component spacing, use consistent values:
+  - Small spacing: `space-y-1`, `space-x-2`
+  - Medium spacing: `space-y-4`, `space-x-4`
+  - Large spacing: `space-y-8`, `space-x-6`
+
+### Typography
+
+- Headings: Use the appropriate heading level semantically
+- Body text: Use `text-sm` or `text-base` with appropriate line height
+- Use font weights consistently:
+  - Regular text: `font-normal`
+  - Emphasis: `font-medium`
+  - Strong emphasis: `font-semibold`
+  - Headings: `font-bold`
+
+## Component Patterns
+
+### Component Structure
+
+Follow this structure for new components:
+
+```tsx
+// MyComponent.tsx
+"use client"; // If using client-side features
+
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+// Define props interface
+interface MyComponentProps {
+  // Props definition
+}
+
+export function MyComponent({ 
+  className, 
+  children,
+  ...props 
+}: MyComponentProps) {
+  return (
+    <div 
+      className={cn("base-styles-here", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+```
+
+### Variants Pattern
+
+For components with multiple variants, use the class-variance-authority (cva) pattern:
+
+```tsx
+import { cva, type VariantProps } from "class-variance-authority";
+
+const myComponentVariants = cva(
+  "base-styles-here",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground",
+        secondary: "bg-secondary text-secondary-foreground",
+      },
+      size: {
+        default: "h-10 px-4",
+        sm: "h-8 px-2",
+        lg: "h-12 px-6",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+export interface MyComponentProps 
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof myComponentVariants> {}
+```
+
+## Layout Patterns
+
+### Page Structure
+
+Follow this structure for page layouts:
+
+```tsx
+export default function PageName() {
+  return (
+    <div className="container py-8">
+      <h1 className="text-3xl font-bold mb-6">Page Title</h1>
+      <div className="grid gap-6">
+        {/* Page content */}
+      </div>
+    </div>
+  );
+}
+```
+
+### Responsive Design
+
+- Use the Tailwind responsive prefixes consistently:
+  - Mobile-first approach (default)
+  - Small screens: `sm:`
+  - Medium screens: `md:`
+  - Large screens: `lg:`
+  - Extra large: `xl:`
+
+Example:
+```tsx
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {/* Content */}
+</div>
+```
+
+## Best Practices
+
+1. **Component Composition**: Prefer composition over complex props
+2. **Accessibility**: Ensure all components are accessible
+   - Use semantic HTML elements
+   - Include proper ARIA attributes
+   - Ensure keyboard navigation works
+3. **State Management**: Keep state as local as possible
+4. **Performance**: 
+   - Use React.memo for expensive components
+   - Avoid unnecessary re-renders
+5. **Naming Conventions**:
+   - Components: PascalCase (e.g., `ButtonGroup`)
+   - Hooks: camelCase with 'use' prefix (e.g., `useFormState`)
+   - Utilities: camelCase (e.g., `formatDate`)
+
+## Common Patterns
+
+### Form Implementation
+
+```tsx
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+
+// Define schema
+const formSchema = z.object({
+  username: z.string().min(2).max(50),
+});
+
+export function ProfileForm() {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+    },
+  });
+
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Handle form submission
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input placeholder="Username" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit">Submit</Button>
+      </form>
+    </Form>
+  );
+}
+```
+
+### Data Fetching
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export function DataComponent() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const response = await fetch('/api/data');
+        const result = await response.json();
+        setData(result);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return <LoadingSkeleton />;
+  }
+
+  return (
+    <div>
+      {/* Render data */}
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-8 w-full" />
+    </div>
+  );
+}
+```
+

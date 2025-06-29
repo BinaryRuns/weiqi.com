@@ -1,0 +1,295 @@
+---
+description: Core game concepts including board representation in both frontend and backend Move validation rules and implementation patterns Liberty and capture logic algorithms Scoring and game end determination Frontend-backend integration for move transmission Best practices for game logic implementation
+globs: 
+alwaysApply: false
+---
+# Go/Weiqi Game Logic Implementation Standards
+
+This guide outlines the standards and best practices for implementing Go/Weiqi game logic in the Weiqi.com project.
+
+## Core Game Concepts
+
+### Board Representation
+
+The Go board should be represented consistently across the codebase:
+
+#### Backend (Java)
+```java
+// 2D List representation where:
+// 0 = empty, 1 = black stone, 2 = white stone
+List<List<Integer>> stones = new ArrayList<>();
+```
+
+#### Frontend (TypeScript)
+```typescript
+// 2D Array representation where:
+// null = empty, "black" = black stone, "white" = white stone
+type StoneColor = "black" | "white" | null;
+type Board = StoneColor[][];
+```
+
+### Game State Structure
+
+Game state should include all information needed to represent the current game:
+
+```typescript
+interface GameState {
+  board: StoneColor[][];
+  currentPlayer: StoneColor;
+  captures: {
+    black: number;
+    white: number;
+  };
+  moveCount: number;
+  lastMove?: Position;
+  gameOver: boolean;
+  winner?: StoneColor;
+}
+```
+
+## Move Validation
+
+### Core Rules
+
+All move validation must enforce these fundamental Go rules:
+
+1. **Occupied Intersection Check**: Stones can only be placed on empty intersections
+2. **Suicide Rule**: A move cannot result in self-capture unless it captures opponent stones
+3. **Ko Rule**: A move cannot recreate the previous board position
+
+### Implementation Pattern
+
+```java
+/**
+ * Validates and processes a move on the board
+ *
+ * @param board Current board state
+ * @param x X coordinate of the move
+ * @param y Y coordinate of the move
+ * @param color Color of the stone being placed
+ * @return Updated board after the move
+ * @throws IllegalStateException if the move is invalid
+ */
+public static Board placeMove(Board board, int x, int y, String color) {
+    // 1. Check if position is already occupied
+    
+    // 2. Create a copy of the board and place the stone
+    
+    // 3. Check for captures of opponent stones
+    
+    // 4. Check if the move has liberties or captures opponent stones
+    
+    // 5. Check for ko rule violation
+    
+    // 6. Return updated board if valid
+}
+```
+
+## Liberty and Capture Logic
+
+### Liberty Checking
+
+The liberty checking algorithm should follow this pattern:
+
+```java
+/**
+ * Checks if a group of stones has any liberties (empty adjacent points)
+ */
+private static boolean hasLiberties(List<List<Integer>> stones, int x, int y) {
+    Set<String> visited = new HashSet<>();
+    return checkLibertiesRecursive(stones, x, y, stones.get(y).get(x), visited);
+}
+
+private static boolean checkLibertiesRecursive(List<List<Integer>> stones, int x, int y, int stoneColor, Set<String> visited) {
+    // 1. Mark current position as visited
+    
+    // 2. Check all four adjacent positions (up, down, left, right)
+    
+    // 3. If any adjacent position is empty, the group has liberties
+    
+    // 4. If adjacent position has same color stone, recursively check its liberties
+    
+    // 5. Return false if no liberties found
+}
+```
+
+### Capture Logic
+
+Stone capture should be implemented following this pattern:
+
+```java
+/**
+ * Checks if a move results in capturing opponent stones
+ */
+private static boolean checkForCaptures(List<List<Integer>> stones, int x, int y, String color) {
+    // 1. Determine opponent's stone color
+    
+    // 2. Check all four adjacent positions
+    
+    // 3. If adjacent position has opponent's stone with no liberties, capture it
+    
+    // 4. Return true if any captures occurred
+}
+
+/**
+ * Removes a captured group of stones from the board
+ */
+private static void removeGroup(List<List<Integer>> stones, int x, int y) {
+    // 1. Get the color of the stone to be removed
+    
+    // 2. Use recursive function to remove connected stones of the same color
+}
+```
+
+## Scoring and Game End
+
+### Territory Calculation
+
+Territory calculation should follow Chinese or Japanese rules as configured:
+
+```java
+/**
+ * Calculates territory based on board position
+ */
+private static Map<String, Integer> calculateTerritory(List<List<Integer>> stones) {
+    // 1. Find all empty regions on the board
+    
+    // 2. For each empty region, determine if it's surrounded by one color
+    
+    // 3. Count territory points for each player
+    
+    // 4. Return territory counts for both players
+}
+```
+
+### Winner Determination
+
+```java
+/**
+ * Determines the winner based on board position, captures, and komi
+ */
+public static Map<String, Object> determineWinner(GameRoom gameRoom) {
+    // 1. Calculate territory for both players
+    
+    // 2. Add captures to the score
+    
+    // 3. Add komi to white's score
+    
+    // 4. Compare scores and determine winner
+    
+    // 5. Return winner and score information
+}
+```
+
+## Frontend-Backend Integration
+
+### Move Transmission
+
+When sending moves between frontend and backend:
+
+1. **Frontend to Backend**:
+   ```typescript
+   interface PlaceStoneRequest {
+     roomId: string;
+     x: number;
+     y: number;
+     color: "black" | "white";
+   }
+   ```
+
+2. **Backend to Frontend**:
+   ```typescript
+   interface BoardUpdateEvent {
+     board: number[][];
+     lastMove: { x: number, y: number };
+     captures: { black: number, white: number };
+     currentPlayer: "black" | "white";
+   }
+   ```
+
+### Board Component Integration
+
+The `GoBoard` component should receive game state and callbacks:
+
+```tsx
+<GoBoard
+  size={19}
+  initialStones={boardState}
+  interactive={isPlayerTurn}
+  inGame={true}
+  showCoordinates={true}
+  currentPlayerColor={currentPlayer}
+  onPlaceStone={(x, y) => {
+    sendMove(gameId, x, y, currentPlayer);
+  }}
+/>
+```
+
+## Reference Implementations
+
+For proper implementation, refer to:
+
+- [GoGameLogic.java](mdc:goweb-spring/src/main/java/com/example/goweb_spring/services/GoGameLogic.java) - Backend game logic implementation
+- [Board.tsx](mdc:goweb/src/components/GoBoard/Board.tsx) - Frontend board component
+- [board-utils.ts](mdc:goweb/src/lib/game/board-utils.ts) - Frontend utility functions
+
+## Best Practices
+
+1. **Immutability**: Always create a copy of the board before modifying it
+2. **Validation**: Validate all moves before applying them
+3. **Error Handling**: Use appropriate exceptions for invalid moves
+4. **Performance**: Optimize recursive algorithms for large board sizes
+5. **Testing**: Write unit tests for all game logic functions
+
+## Game Features Implementation
+
+When implementing game features, follow these guidelines:
+
+### Time Control
+
+```typescript
+interface TimeControl {
+  mainTime: number;       // Main time in seconds
+  byoyomi?: number;       // Byo-yomi period time in seconds
+  byoyomiPeriods?: number; // Number of byo-yomi periods
+  increment?: number;     // Time increment per move in seconds
+}
+```
+
+### Handicap Placement
+
+Standard handicap placement for 9-stone handicap on 19×19:
+
+```
+* - - * - - - - - * - - - - - * - - *
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+* - - * - - - - - * - - - - - * - - *
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+* - - * - - - - - * - - - - - * - - *
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+* - - * - - - - - * - - - - - * - - *
+- - - - - - - - - - - - - - - - - - -
+- - - - - - - - - - - - - - - - - - -
+* - - * - - - - - * - - - - - * - - *
+```
+
+### Game Records (SGF)
+
+Use Smart Game Format (SGF) for storing game records:
+
+```
+(;GM[1]FF[4]CA[UTF-8]AP[Weiqi.com]
+KM[6.5]SZ[19]
+PW[White Player]PB[Black Player]
+;B[pd];W[dp];B[pp];W[dd])
+```
+
