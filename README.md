@@ -246,6 +246,43 @@ To remove a team member:
 
 2. After this PR is merged, the GitHub workflow will automatically re-encrypt all files without their key via a second PR.
 
+#### Troubleshooting SOPS Decryption Issues
+
+**Problem: "Failed to get the data key required to decrypt the SOPS file" or "Screen or window too small"**
+
+This is a common issue in WSL (Windows Subsystem for Linux) environments where GPG can't properly prompt for passphrases.
+
+**Solution:**
+
+1. Configure GPG for WSL compatibility by adding these lines to `~/.gnupg/gpg.conf`:
+
+   ```bash
+   echo "use-agent" >> ~/.gnupg/gpg.conf
+   echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+   ```
+
+2. Reload the GPG agent:
+
+   ```bash
+   gpg-connect-agent reloadagent /bye
+   ```
+
+3. Set the GPG TTY environment variable:
+
+   ```bash
+   export GPG_TTY=$(tty)
+   ```
+
+4. Try decryption again:
+
+   ```bash
+   ./scripts/decrypt.sh
+   ```
+
+**What this fixes:**
+- `use-agent`: Ensures GPG uses the GPG agent for handling keys
+- `pinentry-mode loopback`: Allows GPG to prompt for passphrases directly in the terminal instead of using a separate dialog (which fails in WSL)
+
 #### Best Practices
 
 - **Never commit unencrypted `.env` files** to the repository
@@ -253,6 +290,7 @@ To remove a team member:
 - Use a strong passphrase for your GPG key
 - Rotate your keys periodically (annually recommended)
 - Always pull the latest `.env.enc` before making changes
+- If you're using WSL, apply the GPG configuration fix above to avoid decryption issues
 
 The `.gitignore` file is configured to allow `.env.enc` files while ignoring unencrypted `.env` files.
 
