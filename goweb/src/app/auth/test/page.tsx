@@ -4,10 +4,10 @@ import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchWithAuth } from "@/utils/api";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function TestAuthPage() {
-  const { user, session } = useSupabaseAuth();
+  const { user } = useSupabaseAuth();
   const [authStatus, setAuthStatus] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 

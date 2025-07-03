@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { GoBoard } from '../components/GoBoard/Board'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BoardSize } from '@/components/GoBoard/types'
 import { famousGame1 } from '@/lib/famousGame'
@@ -62,7 +62,7 @@ export default function Home() {
                 </Button>
                 <div className="mt-12">
                   <blockquote className="text-lg text-zinc-300 mb-4">
-                    "Puzzles are the best way to improve your reading ability and tactical awareness in Go."
+                    &quot;Puzzles are the best way to improve your reading ability and tactical awareness in Go.&quot;
                   </blockquote>
                   <div className="flex items-center gap-4">
                     <img 

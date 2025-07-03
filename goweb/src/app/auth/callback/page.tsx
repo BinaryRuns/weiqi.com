@@ -63,9 +63,10 @@ export default function AuthCallbackPage() {
         // No valid auth data found
         console.error("No authentication data found");
         router.push("/login?error=No authentication data found");
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Unexpected error during authentication:", error);
-        router.push("/login?error=" + encodeURIComponent(error.message || "Authentication error"));
+        const errorMessage = error instanceof Error ? error.message : "Authentication error";
+        router.push("/login?error=" + encodeURIComponent(errorMessage));
       }
     };
     
