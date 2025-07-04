@@ -47,6 +47,12 @@ public class GameRoom implements Serializable {
     private Instant lastTimeUpdateTimestamp;
     private Instant lastBroadcastTimestamp;
     private boolean paused = false;
+    
+    // Flag to track if the game is over
+    private boolean gameOver = false;
+    
+    // Store the winner when game ends
+    private String winner;
 
     public GameRoom(String roomName, int maxPlayers, int boardSize, TimeControl timeControl) {
         this.roomId = UUID.randomUUID().toString();
@@ -112,7 +118,7 @@ public class GameRoom implements Serializable {
      * This replaces the old decrementTimer method
      */
     public void updateTimers() {
-        if (paused || lastTimeUpdateTimestamp == null) {
+        if (paused || lastTimeUpdateTimestamp == null || gameOver) {
             return;
         }
         
@@ -155,10 +161,23 @@ public class GameRoom implements Serializable {
     }
 
     /**
-     * Check if either player has run out of time
+     * Check if either player has run out of time and the game is not already over
      */
     public boolean isTimeout() {
+        if (gameOver) {
+            return false;
+        }
         return blackTime <= 0 || whiteTime <= 0;
+    }
+    
+    /**
+     * Mark the game as over due to timeout
+     */
+    public void endGameByTimeout() {
+        if (!gameOver) {
+            gameOver = true;
+            winner = getTimeoutWinner();
+        }
     }
 
     /**
@@ -220,5 +239,9 @@ public class GameRoom implements Serializable {
 
     public void setMoveCount(int moveCount) {
         this.moveCount = moveCount;
+    }
+    
+    public boolean isGameOver() {
+        return gameOver;
     }
 }
