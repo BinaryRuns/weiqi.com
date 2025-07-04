@@ -23,10 +23,9 @@ const Timer: React.FC<TimerProps> = ({
     lastUpdateRef.current = Date.now();
     setDisplayTime(currentTime);
 
-    if (currentTime <= 0) {
-      onTimeUp?.();
-    }
-  }, [currentTime, onTimeUp]);
+    // We no longer need to call onTimeUp here as the server will send a timeout notification
+    // through WebSocket which will be handled in the game page
+  }, [currentTime]);
 
   // Client-side interpolation for smoother countdown
   useEffect(() => {
@@ -39,14 +38,14 @@ const Timer: React.FC<TimerProps> = ({
 
       setDisplayTime(interpolated);
 
+      // We no longer need to call onTimeUp here as the server will send a timeout notification
       if (interpolated <= 0) {
-        onTimeUp?.();
         clearInterval(interval);
       }
     }, 100); // Update display 10 times per second for smooth countdown
 
     return () => clearInterval(interval);
-  }, [isActive, onTimeUp]);
+  }, [isActive]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

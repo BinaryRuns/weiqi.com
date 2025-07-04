@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ const LoginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export default function LoginPage() {
+function LoginForm() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
@@ -72,7 +72,8 @@ export default function LoginPage() {
       if (error) {
         toast({
           title: "Login Failed",
-          description: error.message || "Please check your credentials and try again.",
+          description:
+            error.message || "Please check your credentials and try again.",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -103,7 +104,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <Toaster />
       <div className="flex min-h-screen items-center justify-center">
         <div className="w-full max-w-md p-8 rounded-lg shadow-md bg-[#1e1e1e] text-white">
           <h1 className="text-2xl font-bold text-center mb-6">Log In</h1>
@@ -175,6 +175,23 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <>
+      <Toaster />
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center">
+            Loading...
+          </div>
+        }
+      >
+        <LoginForm />
+      </Suspense>
     </>
   );
 }
