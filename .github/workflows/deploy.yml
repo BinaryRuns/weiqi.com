@@ -79,43 +79,15 @@ jobs:
             docker-compose pull
             docker-compose up -d
 
-  frontend:
-    name: Frontend
+  # Frontend deployment is now handled in a separate personal repository
+  # This job is kept as a notification step
+  frontend-notification:
+    name: Frontend Notification
     runs-on: ubuntu-latest
     needs: backend
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-          cache: "npm"
-          cache-dependency-path: goweb/package-lock.json
-
-      - name: Install dependencies
+      - name: Notify about backend deployment
         run: |
-          cd goweb
-          npm ci
-
-      - name: Build Next.js app
-        run: |
-          cd goweb
-          npm run build
-        env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_WS_URL: ${{ secrets.NEXT_PUBLIC_WS_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./goweb
-          vercel-args: "--prod"
+          echo "Backend deployment completed. Please trigger the frontend deployment in your personal repository."
+          echo "Frontend repository should be configured with its own GitHub Actions workflow."

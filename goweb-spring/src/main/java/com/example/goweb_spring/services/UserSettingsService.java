@@ -34,14 +34,71 @@ public class UserSettingsService {
      * @param supabaseUserId the Supabase User ID
      * @return a DTO containing the settings
      */
+    @Transactional
     public UserSettingsDto getSettingsForUser(String supabaseUserId) {
         // First retrieve the user by Supabase ID
         UserEntity user = userRepository.findBySupabaseUserId(supabaseUserId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with Supabase ID: " + supabaseUserId));
 
+        // Find or create user settings
         UserSettingsEntity entity = userSettingsRepository.findByUser(user)
-                .orElseThrow(() -> new EntityNotFoundException("Settings not found for user: " + user.getId()));
+                .orElseGet(() -> {
+                    // Create default settings if not found
+                    UserSettingsEntity defaultSettings = createDefaultUserSettings(user);
+                    return userSettingsRepository.save(defaultSettings);
+                });
+                
         return userSettingsMapper.toDto(entity);
+    }
+    
+    /**
+     * Creates default user settings for a user
+     * 
+     * @param user the user entity
+     * @return a new UserSettingsEntity with default values
+     */
+    private UserSettingsEntity createDefaultUserSettings(UserEntity user) {
+        UserSettingsEntity settings = new UserSettingsEntity();
+        settings.setUser(user);
+        
+        // Set default values
+        settings.setAvatarUrl(user.getAvatarUrl()); // Use avatar from user if available
+        settings.setBio("");
+        
+        // Game Preferences defaults
+        settings.setBoardTheme("classic");
+        settings.setStoneTheme("classic");
+        settings.setSoundEffects(true);
+        settings.setTimeControl("standard");
+        settings.setAiAssistance(true);
+        
+        // Notification defaults
+        settings.setEmailNotifications(true);
+        settings.setSmsNotifications(false);
+        settings.setInAppNotifications(true);
+        
+        // Matchmaking defaults
+        settings.setDisplayRatings(true);
+        settings.setMatchmakingFilters("");
+        
+        // Display defaults
+        settings.setTheme("dark");
+        settings.setFontSize("default");
+        settings.setAccessibilityOptions("");
+        settings.setLanguage("en");
+        settings.setTimezone("UTC");
+        
+        // Privacy defaults
+        settings.setTwoFactor(false);
+        settings.setLoginAlerts(true);
+        settings.setBlockedUsers("");
+        
+        // Advanced defaults
+        settings.setGameHistory("");
+        settings.setApiKey("");
+        settings.setBetaFeatures(false);
+        
+        return settings;
     }
 
     /**
@@ -70,13 +127,39 @@ public class UserSettingsService {
         user.setLastSyncedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // Update extended settings via the mapper
+        // Find or create user settings
         UserSettingsEntity userSettings = userSettingsRepository.findByUser(user)
-                .orElseThrow(() -> new EntityNotFoundException("Settings not found for user: " + user.getId()));
+                .orElseGet(() -> {
+                    // Create default settings if not found
+                    UserSettingsEntity defaultSettings = createDefaultUserSettings(user);
+                    return userSettingsRepository.save(defaultSettings);
+                });
 
-        // This call will update the fields of userSettings with values from the DTO.
-        // userSettingsMapper.updateEntityFromDto(settings, userSettings);
-
+        // Update the fields from the DTO
+        if (settings.getAvatarUrl() != null) {
+            userSettings.setAvatarUrl(settings.getAvatarUrl());
+        }
+        if (settings.getBio() != null) {
+            userSettings.setBio(settings.getBio());
+        }
+        // Game preferences
+        if (settings.getBoardTheme() != null) {
+            userSettings.setBoardTheme(settings.getBoardTheme());
+        }
+        if (settings.getStoneTheme() != null) {
+            userSettings.setStoneTheme(settings.getStoneTheme());
+        }
+        if (settings.getSoundEffects() != null) {
+            userSettings.setSoundEffects(settings.getSoundEffects());
+        }
+        if (settings.getTimeControl() != null) {
+            userSettings.setTimeControl(settings.getTimeControl());
+        }
+        if (settings.getAiAssistance() != null) {
+            userSettings.setAiAssistance(settings.getAiAssistance());
+        }
+        // Other settings can be updated similarly as needed
+        
         userSettingsRepository.save(userSettings);
     }
     
@@ -110,6 +193,16 @@ public class UserSettingsService {
         user.setAvatarUrl(avatarUrl);
         user.setLastSyncedAt(LocalDateTime.now());
         
-        return userRepository.save(user);
+        // Save the user
+        UserEntity savedUser = userRepository.save(user);
+        
+        // Ensure user settings exist
+        userSettingsRepository.findByUser(savedUser)
+            .orElseGet(() -> {
+                UserSettingsEntity defaultSettings = createDefaultUserSettings(savedUser);
+                return userSettingsRepository.save(defaultSettings);
+            });
+        
+        return savedUser;
     }
 }

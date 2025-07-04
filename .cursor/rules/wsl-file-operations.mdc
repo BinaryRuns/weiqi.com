@@ -1,0 +1,61 @@
+---
+alwaysApply: true
+---
+
+# WSL File Operations Guide
+
+This guide provides best practices for working with files in a Windows Subsystem for Linux (WSL) environment within the Weiqi.com project.
+
+## Path Handling
+
+### Path Formats
+
+- **WSL paths**: Use forward slashes (`/`) for paths within the WSL environment
+- **Windows paths**: Use backslashes (`\`) for Windows paths
+- **Accessing WSL from Windows**: Use the `\\wsl$\<DistroName>\path\to\file` format
+- **Accessing Windows from WSL**: Use `/mnt/<drive-letter>/path/to/file` format (e.g., `/mnt/c/Users/username/Documents`)
+
+### Path Conversion
+
+- When working across Windows and WSL, use the `wslpath` command:
+  - Convert Windows to WSL: `wslpath "C:\path\to\file"`
+  - Convert WSL to Windows: `wslpath -w "/path/to/file"`
+
+## File Permissions
+
+- Files created in WSL maintain Linux permissions (rwx)
+- Files created in Windows and accessed in WSL default to 777 (full permissions)
+- Use `chmod` to adjust permissions when needed
+- Executable scripts should have `chmod +x` applied
+
+## Line Endings
+
+- WSL uses LF (`\n`) line endings
+- Windows uses CRLF (`\r\n`) line endings
+- Configure Git to handle line endings appropriately:
+  ```bash
+  git config --global core.autocrlf input
+  ```
+- For text editors, configure to use LF line endings for consistency
+
+## File Watching and Performance
+
+- File watching operations may be slower in WSL
+- For optimal performance:
+  - Store project files in the WSL filesystem, not in Windows-mounted directories
+  - Avoid excessive file operations across the WSL/Windows boundary
+  - Use WSL 2 rather than WSL 1 for better filesystem performance
+
+## Project-Specific Recommendations
+
+- Store the Weiqi.com codebase within the WSL filesystem
+- Run build tools, tests, and servers from within WSL
+- Use VSCode's Remote-WSL extension for seamless editing
+- Configure `.gitattributes` to enforce consistent line endings
+
+## Troubleshooting Common Issues
+
+- **Permission denied errors**: Check file permissions with `ls -la` and adjust with `chmod`
+- **File not found errors**: Verify path format matches the environment (WSL vs Windows)
+- **Performance issues**: Ensure files are stored in the native filesystem of the environment you're working in
+- **Line ending problems**: Use tools like `dos2unix` or `unix2dos` to convert line endings

@@ -8,10 +8,16 @@ export const fetchUserSettings = async (
 ): Promise<UserSettingsDto | undefined> => {
   try {
     const response = await fetchWithAuth(`/api/user/settings/${userId}`);
-    if (!response.ok) throw new Error("Failed to fetch settings");
+    if (!response.ok) {
+      console.error(
+        `Failed to fetch settings: ${response.status} ${response.statusText}`
+      );
+      return undefined;
+    }
     const data: UserSettingsDto = await response.json();
     return data;
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching user settings:", err);
+    return undefined;
   }
 };

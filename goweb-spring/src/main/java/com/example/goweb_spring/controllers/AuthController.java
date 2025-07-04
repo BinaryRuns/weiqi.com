@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.Random;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -58,10 +59,179 @@ public class AuthController {
                 .body(Map.of("authenticated", false, "message", "Not authenticated"));
     }
     
+    /**
+     * Creates a new user in the database based on Supabase authentication data.
+     * This endpoint should be called only once when a user first authenticates.
+     */
+    @PostMapping("/create-user")
+    public ResponseEntity<?> createUser(@RequestBody Map<String, Object> userData) {
+        logger.info("Create user endpoint called");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            logger.warn("Attempted to create user without authentication");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Not authenticated"));
+        }
+        
+        String supabaseUserId = authentication.getName();
+        
+        // Check if user already exists
+        Optional<UserEntity> existingUser = userRepository.findBySupabaseUserId(supabaseUserId);
+        if (existingUser.isPresent()) {
+            logger.warn("User already exists with Supabase ID: {}", supabaseUserId);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "User already exists",
+                        "userId", supabaseUserId,
+                        "username", existingUser.get().getUsername()
+                    ));
+        }
+        
+        String email = (String) userData.get("email");
+        String username = (String) userData.get("username");
+        String avatarUrl = (String) userData.get("avatarUrl");
+        String skillLevel = (String) userData.getOrDefault("skillLevel", "beginner");
+        
+        // Validate required fields
+        if (email == null || email.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Email is required"));
+        }
+        
+        // Check for email conflicts
+        Optional<UserEntity> existingUserByEmail = userRepository.findByEmail(email);
+        if (existingUserByEmail.isPresent()) {
+            logger.warn("User with email {} already exists with different Supabase ID: {} vs {}", 
+                email, existingUserByEmail.get().getSupabaseUserId(), supabaseUserId);
+            
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                    "success", false,
+                    "message", "User with this email already exists",
+                    "existingUserId", existingUserByEmail.get().getSupabaseUserId()
+                ));
+        }
+        
+        // Generate a unique username
+        String finalUsername = generateUniqueUsername(username, supabaseUserId);
+        
+        // Create new user entity
+        UserEntity newUser = new UserEntity();
+        newUser.setSupabaseUserId(supabaseUserId);
+        newUser.setEmail(email);
+        newUser.setUsername(finalUsername);
+        newUser.setAvatarUrl(avatarUrl);
+        newUser.setSkillLevel(skillLevel != null ? skillLevel : "beginner");
+        
+        try {
+            userRepository.save(newUser);
+            logger.info("User successfully created: {}", newUser.getUsername());
+            
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of(
+                    "success", true,
+                    "userId", supabaseUserId,
+                    "username", newUser.getUsername(),
+                    "isNewUser", true
+                ));
+        } catch (Exception e) {
+            logger.error("Error creating user: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "success", false,
+                    "message", "Error creating user: " + e.getMessage()
+                ));
+        }
+    }
+    
+    /**
+     * Updates an existing user's profile data.
+     * This endpoint should be used for profile updates after initial creation.
+     */
+    @PostMapping("/update-user")
+    public ResponseEntity<?> updateUser(@RequestBody Map<String, Object> userData) {
+        logger.info("Update user endpoint called");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            logger.warn("Attempted to update user without authentication");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Not authenticated"));
+        }
+        
+        String supabaseUserId = authentication.getName();
+        
+        // Find the existing user
+        Optional<UserEntity> existingUserOpt = userRepository.findBySupabaseUserId(supabaseUserId);
+        if (existingUserOpt.isEmpty()) {
+            logger.warn("User not found with Supabase ID: {}", supabaseUserId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "User not found"));
+        }
+        
+        UserEntity existingUser = existingUserOpt.get();
+        
+        // Update only the fields that are provided
+        if (userData.containsKey("username")) {
+            String newUsername = (String) userData.get("username");
+            if (newUsername != null && !newUsername.equals(existingUser.getUsername())) {
+                // Check if username is already taken
+                if (userRepository.findByUsername(newUsername).isPresent()) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(Map.of(
+                                "success", false,
+                                "message", "Username already taken",
+                                "field", "username"
+                            ));
+                }
+                existingUser.setUsername(newUsername);
+            }
+        }
+        
+        if (userData.containsKey("avatarUrl")) {
+            String avatarUrl = (String) userData.get("avatarUrl");
+            existingUser.setAvatarUrl(avatarUrl);
+        }
+        
+        if (userData.containsKey("skillLevel")) {
+            String skillLevel = (String) userData.get("skillLevel");
+            if (skillLevel != null) {
+                existingUser.setSkillLevel(skillLevel);
+            }
+        }
+        
+        // Always update the last synced timestamp
+        existingUser.setLastSyncedAt(LocalDateTime.now());
+        
+        try {
+            userRepository.save(existingUser);
+            logger.info("User successfully updated: {}", existingUser.getUsername());
+            
+            return ResponseEntity.ok()
+                    .body(Map.of(
+                        "success", true,
+                        "userId", supabaseUserId,
+                        "username", existingUser.getUsername()
+                    ));
+        } catch (Exception e) {
+            logger.error("Error updating user: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Error updating user: " + e.getMessage()
+                    ));
+        }
+    }
+    
+    /**
+     * Legacy endpoint for backward compatibility.
+     * Determines whether to create or update a user based on existence.
+     */
     @PostMapping("/sync-user")
     public ResponseEntity<?> syncUserData(@RequestBody Map<String, Object> userData) {
-        logger.info("Sync user endpoint called");
-        // This endpoint will be called by the frontend after successful Supabase login
+        logger.info("Sync user endpoint called (legacy)");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -71,75 +241,26 @@ public class AuthController {
         }
         
         String supabaseUserId = authentication.getName();
-        String email = (String) userData.get("email");
-        String username = (String) userData.get("username"); 
-        String avatarUrl = (String) userData.get("avatarUrl");
-        String skillLevel = (String) userData.getOrDefault("skillLevel", "beginner");
         
-        logger.info("Syncing user data for user ID: {}, email: {}", supabaseUserId, email);
+        // Check if user exists to determine whether to create or update
+        Optional<UserEntity> existingUser = userRepository.findBySupabaseUserId(supabaseUserId);
         
-        // First check if a user with this email already exists
-        if (email != null && !email.isEmpty()) {
-            Optional<UserEntity> existingUserByEmail = userRepository.findByEmail(email);
-            if (existingUserByEmail.isPresent()) {
-                UserEntity existingUser = existingUserByEmail.get();
-                logger.warn("User with email {} already exists with different Supabase ID: {} vs {}", 
-                    email, existingUser.getSupabaseUserId(), supabaseUserId);
-                
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of(
-                        "success", false,
-                        "message", "User with this email already exists",
-                        "existingUserId", existingUser.getSupabaseUserId()
-                    ));
-            }
-        }
-        
-        // Check if user with this Supabase ID already exists
-        Optional<UserEntity> existingUserById = userRepository.findBySupabaseUserId(supabaseUserId);
-        
-        UserEntity user;
-        boolean isNewUser = false;
-        
-        if (existingUserById.isPresent()) {
-            // Update existing user
-            user = existingUserById.get();
-            logger.info("Updating existing user: {}", user.getUsername());
-            if (email != null) user.setEmail(email);
-            if (username != null) user.setUsername(username);
-            if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-            if (skillLevel != null) user.setSkillLevel(skillLevel);
+        if (existingUser.isPresent()) {
+            // Just update the last synced timestamp for existing users
+            UserEntity user = existingUser.get();
             user.setLastSyncedAt(LocalDateTime.now());
-        } else {
-            // Create new user
-            isNewUser = true;
-            logger.info("Creating new user with Supabase ID: {}", supabaseUserId);
-            user = new UserEntity();
-            user.setSupabaseUserId(supabaseUserId);
-            user.setEmail(email != null ? email : "");
-            user.setUsername(username != null ? username : "player_" + supabaseUserId.substring(0, 8));
-            user.setAvatarUrl(avatarUrl);
-            user.setSkillLevel(skillLevel != null ? skillLevel : "beginner");
-        }
-        
-        try {
             userRepository.save(user);
-            logger.info("User successfully synchronized: {}", user.getUsername());
             
-            return ResponseEntity.status(isNewUser ? HttpStatus.CREATED : HttpStatus.OK)
+            return ResponseEntity.ok()
                 .body(Map.of(
                     "success", true,
                     "userId", supabaseUserId,
                     "username", user.getUsername(),
-                    "isNewUser", isNewUser
+                    "isNewUser", false
                 ));
-        } catch (Exception e) {
-            logger.error("Error saving user: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "success", false,
-                    "message", "Error saving user: " + e.getMessage()
-                ));
+        } else {
+            // For new users, delegate to the create-user endpoint
+            return createUser(userData);
         }
     }
     
@@ -153,5 +274,49 @@ public class AuthController {
     public ResponseEntity<?> handleSyncUserOptions() {
         logger.info("OPTIONS request to /sync-user endpoint");
         return ResponseEntity.ok().build();
+    }
+    
+    @RequestMapping(value = "/create-user", method = RequestMethod.OPTIONS)
+    public ResponseEntity<?> handleCreateUserOptions() {
+        logger.info("OPTIONS request to /create-user endpoint");
+        return ResponseEntity.ok().build();
+    }
+    
+    @RequestMapping(value = "/update-user", method = RequestMethod.OPTIONS)
+    public ResponseEntity<?> handleUpdateUserOptions() {
+        logger.info("OPTIONS request to /update-user endpoint");
+        return ResponseEntity.ok().build();
+    }
+    
+    /**
+     * Generates a unique username based on the provided username or Supabase ID.
+     * Handles conflicts by adding random numbers if needed.
+     */
+    private String generateUniqueUsername(String baseUsername, String supabaseUserId) {
+        // Start with the provided username or generate from Supabase ID
+        String username = (baseUsername != null && !baseUsername.isEmpty())
+                ? baseUsername
+                : "player_" + supabaseUserId.substring(0, 8);
+        
+        // Check if the username is already taken
+        if (!userRepository.findByUsername(username).isPresent()) {
+            return username;
+        }
+        
+        // Try with Supabase ID suffix
+        String usernameWithId = username + "_" + supabaseUserId.substring(0, 6);
+        if (!userRepository.findByUsername(usernameWithId).isPresent()) {
+            return usernameWithId;
+        }
+        
+        // If still not unique, add random numbers until we find a unique username
+        Random random = new Random();
+        String uniqueUsername;
+        do {
+            int randomNum = random.nextInt(10000);
+            uniqueUsername = username + "_" + randomNum;
+        } while (userRepository.findByUsername(uniqueUsername).isPresent());
+        
+        return uniqueUsername;
     }
 }
