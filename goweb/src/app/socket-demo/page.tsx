@@ -8,6 +8,7 @@ import { GameRoom } from "@/types/GameRoom";
 import { ChatMessage, MessageType } from "@/types/ChatMessage";
 import { fetchWithAuth } from "@/utils/api";
 import withAuth from "@/auth/WithAuth";
+import { WS_URL } from "@/config/api";
 
 const HomePage: React.FC = () => {
   const router = useRouter();
@@ -105,11 +106,11 @@ const HomePage: React.FC = () => {
   };
 
   const connectWebSocket = (roomId: string) => {
-    const socket = new SockJS("http://localhost:8081/ws/game");
+    const socket = new SockJS(`${WS_URL}/game`);
     const client = new Client({
       webSocketFactory: () => socket as unknown as WebSocket,
       reconnectDelay: 5000,
-      debug: () => {}, // Disable debug logs
+      debug: (msg) => {}, // Disable debug logs
 
       onConnect: () => {
         console.log("Connected to WebSocket");

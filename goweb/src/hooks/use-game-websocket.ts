@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { GameState } from "@/types/game-types";
 import { ChatMessage } from "@/types/ChatMessage";
+import { WS_URL } from "@/config/api";
 
 type GameMessageHandler = {
   onGameStateUpdate?: (state: GameState) => void;
@@ -19,7 +20,7 @@ export const useGameWebSocket = (
 
   useEffect(() => {
     if (!gameId || !userId || isConnected) return;
-    connect(`http://localhost:8081/ws/`);
+    connect(`${WS_URL}`);
 
     return () => {
       disconnect();

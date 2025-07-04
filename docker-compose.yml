@@ -25,7 +25,7 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     networks:
       - app-network
-      
+
   # Optional: pgAdmin (PostgreSQL Management UI)
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -40,7 +40,7 @@ services:
       - postgres
     networks:
       - app-network
-      
+
   # Frontend Service
   frontend:
     build:
@@ -65,7 +65,7 @@ services:
   backend:
     build:
       context: ./goweb-spring
-      dockerfile: Dockerfile.dev 
+      dockerfile: Dockerfile.dev
     container_name: backend
     ports:
       - "${BACKEND_PORT}:8080"

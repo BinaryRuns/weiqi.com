@@ -12,6 +12,7 @@ import React, {
 import SockJS from "sockjs-client";
 import { Client, IMessage, StompSubscription, IFrame } from "@stomp/stompjs";
 import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
+import { WS_URL } from "@/config/api";
 
 /**
  * Defines the shape of the WebSocket context
@@ -48,15 +49,17 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     if (clientRef.current && clientRef.current.active) {
       return;
     }
-    
+
     const client = new Client({
-      webSocketFactory: () =>
-        new SockJS(`http://localhost:8081/ws?token=${accessToken}`),
+      webSocketFactory: () => new SockJS(`${WS_URL}?token=${accessToken}`),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-      debug: process.env.NODE_ENV === 'development' ? 
-        (msg: string) => console.debug("[WS]", msg) : undefined,
+      debug: (msg: string) => {
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[WS]", msg);
+        }
+      },
       onConnect: () => {
         setIsConnected(true);
       },
@@ -89,7 +92,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     if (!clientRef.current || !clientRef.current.connected) {
       return null;
     }
-    
+
     return clientRef.current.subscribe(destination, (message: IMessage) => {
       if (message.body) {
         try {

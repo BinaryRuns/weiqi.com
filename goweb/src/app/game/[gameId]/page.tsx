@@ -96,6 +96,15 @@ export default function GamePage() {
       }
     );
 
+    // Subscribe to timeout notifications
+    const timeoutSubscription = subscribe<{ winner: string }>(
+      `/topic/game/${params.gameId}/timeout`,
+      (data) => {
+        setResignMessage(`Time's up! ${data.winner} wins!`);
+        setGameOver(true);
+      }
+    );
+
     // // Subscribe to errors
     // const errorSubscription = subscribe(`/user/queue/errors`, (message) => {
     //   const errorData = JSON.parse(message.body);
@@ -130,6 +139,7 @@ export default function GamePage() {
       chatSubscription?.unsubscribe();
       soundSubscription?.unsubscribe();
       resignSubscription?.unsubscribe();
+      timeoutSubscription?.unsubscribe();
     };
   }, [isConnected, params.gameId, userId, toast, userName, subscribe, send]);
 
@@ -210,7 +220,6 @@ export default function GamePage() {
                   : gameState.whiteTime
               }
               isActive={gameState.currentPlayerColor === opponent?.color}
-              onTimeUp={() => alert(`${opponent?.userName}'s time is up!`)}
             />
           </div>
 
@@ -254,7 +263,6 @@ export default function GamePage() {
                   : gameState.whiteTime
               }
               isActive={gameState.currentPlayerColor === currentUser?.color}
-              onTimeUp={() => alert(`${currentUser?.userName}'s time is up!`)}
             />
           </div>
         </div>
