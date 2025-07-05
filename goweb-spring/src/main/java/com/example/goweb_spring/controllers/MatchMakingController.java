@@ -32,7 +32,7 @@ public class MatchMakingController {
 
     @PostMapping("/cancel/{playerId}")
     public ResponseEntity<String> cancelQueue(@PathVariable String playerId) {
-//        matchMakingService.removePlayer(matchMakingRequest.getUserId());
+        matchmakingService.removePlayerById(playerId);
         return ResponseEntity.ok("Player removed from queue.");
     }
 }
