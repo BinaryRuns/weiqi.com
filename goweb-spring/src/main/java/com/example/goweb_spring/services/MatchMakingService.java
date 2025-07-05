@@ -46,6 +46,23 @@ public class MatchMakingService {
         matchmakingRepository.remove(entry);
         System.out.println("Removing " + entry);
     }
+    
+    public void removePlayerById(String playerId) {
+        String entryJson = matchmakingRepository.getPlayerEntry(playerId);
+        if (entryJson != null) {
+            try {
+                MatchmakingEntry entry = objectMapper.readValue(entryJson, MatchmakingEntry.class);
+                removePlayer(entry);
+                System.out.println("Removed player by ID: " + playerId);
+            } catch (Exception e) {
+                System.out.println("Error removing player by ID: " + e.getMessage());
+                // Even if we can't parse the entry, we should still remove it from the player entries hash
+                matchmakingRepository.removePlayerEntry(playerId);
+            }
+        } else {
+            System.out.println("No entry found for player ID: " + playerId);
+        }
+    }
 
     private int[] computeDynamicRange(int rating, Instant enqueuedAt) {
         long waitingSeconds = Duration.between(enqueuedAt, Instant.now()).toSeconds();

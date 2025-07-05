@@ -16,6 +16,7 @@ import java.util.Set;
 public class MatchmakingRepository {
     private static final String QUEUE_KEY_PREFIX = "matchmakingQueue:";
     private static final String ACTIVE_QUEUES_KEY = "activeMatchmakingQueues";
+    private static final String PLAYER_ENTRIES_KEY = "matchmakingPlayerEntries";
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -46,6 +47,9 @@ public class MatchmakingRepository {
             String json = objectMapper.writeValueAsString(entry);
             String key = getQueueKey(entry.getTimeControl().name(), entry.getBoardSize().name());
             redisTemplate.opsForZSet().add(key, json, entry.getRating());
+            
+            // Store the entry by player ID for easy retrieval during cancellation
+            storePlayerEntry(entry.getPlayerId(), json);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -56,11 +60,26 @@ public class MatchmakingRepository {
             String json = objectMapper.writeValueAsString(entry);
             String key = getQueueKey(entry.getTimeControl().name(), entry.getBoardSize().name());
             redisTemplate.opsForZSet().remove(key, json);
+            
+            // Remove the entry from the player entries hash
+            removePlayerEntry(entry.getPlayerId());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
+    public void storePlayerEntry(String playerId, String entryJson) {
+        redisTemplate.opsForHash().put(PLAYER_ENTRIES_KEY, playerId, entryJson);
+    }
+    
+    public String getPlayerEntry(String playerId) {
+        return (String) redisTemplate.opsForHash().get(PLAYER_ENTRIES_KEY, playerId);
+    }
+    
+    public void removePlayerEntry(String playerId) {
+        redisTemplate.opsForHash().delete(PLAYER_ENTRIES_KEY, playerId);
+    }
+    
     public Set<ZSetOperations.TypedTuple<String>> rangeByScore(String timeControl, String boardSize, double min, double max) {
         String key = getQueueKey(timeControl, boardSize);
         return redisTemplate.opsForZSet().rangeByScoreWithScores(key, min, max);

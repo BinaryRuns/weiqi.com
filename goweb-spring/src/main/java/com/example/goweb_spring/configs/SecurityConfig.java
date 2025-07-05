@@ -65,14 +65,16 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for APIs
             .authorizeHttpRequests(auth -> {
                 // Public endpoints that don't require authentication
-                auth.requestMatchers("/ws/**").permitAll()
-                    .requestMatchers("/api/usersettings/**").permitAll()
+                auth.requestMatchers("/ws/**").permitAll()  // Websocket endpoints are handcled by the user interceptor
+                    .requestMatchers("/api/hello/**").permitAll()
                     // OPTIONS requests for CORS pre-flight
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     
                 // Protected endpoints that require authentication
-                auth.requestMatchers("/api/auth/verify").authenticated()
-                    .requestMatchers("/api/game/**").authenticated();
+                auth.requestMatchers("/api/auth/**").authenticated() // All auth endpoints require authentication
+                    .requestMatchers("/api/game/**").authenticated() // All game endpoints require authentication
+                    .requestMatchers("/api/matchmaking/**").authenticated() // All matchmaking endpoints require authentication
+                    .requestMatchers("/api/user/settings/**").authenticated(); // All user settings endpoints require authentication
                 
                 // Default rule: all other requests must be authenticated
                 auth.anyRequest().authenticated();

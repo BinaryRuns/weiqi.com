@@ -1,0 +1,164 @@
+---
+description: Authentication and Endpoint Guidelines
+---
+# Authentication and Endpoint Guidelines
+
+This guide outlines the standard patterns and best practices for creating and securing endpoints in the Weiqi.com application.
+
+## Authentication Architecture
+
+The application uses a layered authentication approach:
+
+1. **JWT-based Authentication**: Supabase JWT tokens are validated by `SupabaseAuthenticationFilter`
+2. **Declarative Security**: `@RequiresAuthentication` annotation for protected endpoints
+3. **Centralized User ID Retrieval**: `SecurityUtils` utility class for accessing the authenticated user
+
+## Creating New Endpoints
+
+### 1. Controller Structure
+
+```java
+@RestController
+@RequestMapping("/api/your-resource")
+public class YourController {
+    private final YourService yourService;
+    private final SecurityUtils securityUtils;
+    
+    public YourController(YourService yourService, SecurityUtils securityUtils) {
+        this.yourService = yourService;
+        this.securityUtils = securityUtils;
+    }
+    
+    // Endpoints go here
+}
+```
+
+### 2. Securing Endpoints
+
+#### Option A: Class-level Authentication (all endpoints require auth)
+
+```java
+@RestController
+@RequestMapping("/api/your-resource")
+@RequiresAuthentication
+public class YourController {
+    // All endpoints in this controller require authentication
+}
+```
+
+#### Option B: Method-level Authentication (selective endpoints)
+
+```java
+@RestController
+@RequestMapping("/api/your-resource")
+public class YourController {
+    
+    @GetMapping("/public")
+    public ResponseEntity<?> publicEndpoint() {
+        // No authentication required
+        return ResponseEntity.ok("Public data");
+    }
+    
+    @GetMapping("/protected")
+    @RequiresAuthentication
+    public ResponseEntity<?> protectedEndpoint() {
+        // Authentication required
+        String userId = securityUtils.requireUserId();
+        return ResponseEntity.ok("Protected data for user: " + userId);
+    }
+}
+```
+
+### 3. Getting the Authenticated User ID
+
+Always use `SecurityUtils` to retrieve the authenticated user ID:
+
+```java
+@GetMapping
+@RequiresAuthentication
+public ResponseEntity<?> getResource() {
+    // Get the authenticated user ID
+    String userId = securityUtils.requireUserId();
+    
+    // Use the userId to retrieve or process data
+    YourDto data = yourService.getDataForUser(userId);
+    
+    return ResponseEntity.ok(data);
+}
+```
+
+### 4. Security Configuration
+
+When adding new public endpoints, update the `SecurityConfig` class:
+
+```java
+// In SecurityConfig.java
+.authorizeHttpRequests(auth -> {
+    // Public endpoints that don't require authentication
+    auth.requestMatchers("/ws/**").permitAll()
+        .requestMatchers("/api/hello/**").permitAll()
+        .requestMatchers("/api/your-new-public-endpoint/**").permitAll()
+        // OPTIONS requests for CORS pre-flight
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+    
+    // Protected endpoints require authentication
+    auth.requestMatchers("/api/auth/**").authenticated()
+        .requestMatchers("/api/game/**").authenticated()
+        .requestMatchers("/api/matchmaking/**").authenticated()
+        .requestMatchers("/api/user/settings/**").authenticated();
+    
+    // Default rule: all other requests must be authenticated
+    auth.anyRequest().authenticated();
+})
+```
+
+Also update the `SupabaseAuthenticationFilter` class to match:
+
+```java
+private boolean isPermittedPath(String path) {
+    return path.startsWith("/ws") || 
+           path.startsWith("/api/hello") ||
+           path.startsWith("/api/your-new-public-endpoint");
+}
+```
+
+## Frontend Integration
+
+### 1. API Calls
+
+For authenticated endpoints, use the `fetchWithAuth` utility:
+
+```typescript
+// For GET requests
+const response = await fetchWithAuth(`/api/your-resource`);
+
+// For POST/PUT/DELETE requests
+const response = await fetchWithAuth(`/api/your-resource`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(data),
+});
+```
+
+### 2. Important Principles
+
+1. **Never send user IDs from frontend**: The server should always derive the user ID from the authentication token
+2. **Use relative paths**: Always use relative paths for API endpoints
+3. **Handle authentication errors**: Properly handle 401 responses
+
+## WebSocket Authentication
+
+WebSockets use a different authentication mechanism:
+
+1. Authentication happens during the handshake via query parameters
+2. The `UserInterceptor` class handles WebSocket authentication
+3. WebSocket endpoints are excluded from the REST authentication flow
+
+## Security Best Practices
+
+1. **Principle of Least Privilege**: Only grant the minimum necessary access
+2. **Defense in Depth**: Use multiple layers of security
+3. **Never Trust the Client**: Always validate and sanitize input
+4. **Fail Securely**: Default to denying access when authentication fails

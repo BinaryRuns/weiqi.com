@@ -130,7 +130,7 @@ export const SupabaseAuthProvider = ({
 
       await syncUserWithBackend(currentUser, token);
 
-      const settings = await fetchUserSettings(currentUser.id);
+      const settings = await fetchUserSettings();
       if (settings) {
         // Cache the settings for future hot reloads
         sessionStorage.setItem(
@@ -302,7 +302,7 @@ export const SupabaseAuthProvider = ({
     setIsCompletenessLoading(true);
     try {
       // Always fetch fresh data from the server
-      const settings = await fetchUserSettings(session.user.id);
+      const settings = await fetchUserSettings();
       if (settings) {
         // Update the cache
         sessionStorage.setItem(

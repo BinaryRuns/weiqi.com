@@ -1,7 +1,9 @@
 package com.example.goweb_spring.controllers;
 
+import com.example.goweb_spring.annotations.RequiresAuthentication;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.repositories.UserRepository;
+import com.example.goweb_spring.utils.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,21 +24,19 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     
     private final UserRepository userRepository;
+    private final SecurityUtils securityUtils;
     
-    public AuthController(UserRepository userRepository) {
+    public AuthController(UserRepository userRepository, SecurityUtils securityUtils) {
         this.userRepository = userRepository;
+        this.securityUtils = securityUtils;
     }
 
     @GetMapping("/verify")
     public ResponseEntity<?> verifyToken() {
         logger.info("Verify token endpoint called");
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
-        logger.info("Authentication object: {}", authentication);
-        
-        // Accept all authenticated users by checking simpler conditions
-        if (authentication != null && authentication.isAuthenticated()) {
-            String supabaseUserId = authentication.getName();
+        if (securityUtils.isAuthenticated()) {
+            String supabaseUserId = securityUtils.requireUserId();
             logger.info("User is authenticated with Supabase ID: {}", supabaseUserId);
             
             // Check if user exists in our database
@@ -57,7 +57,7 @@ public class AuthController {
             return ResponseEntity.ok(response);
         }
         
-        logger.warn("User is not authenticated. Authentication: {}", authentication);
+        logger.warn("User is not authenticated.");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("authenticated", false, "message", "Not authenticated"));
     }
@@ -67,17 +67,10 @@ public class AuthController {
      * This endpoint should be called only once when a user first authenticates.
      */
     @PostMapping("/create-user")
+    @RequiresAuthentication
     public ResponseEntity<?> createUser(@RequestBody Map<String, Object> userData) {
         logger.info("Create user endpoint called");
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        if (authentication == null || !authentication.isAuthenticated()) {
-            logger.warn("Attempted to create user without authentication");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Not authenticated"));
-        }
-        
-        String supabaseUserId = authentication.getName();
+        String supabaseUserId = securityUtils.requireUserId();
         
         // Check if user already exists
         Optional<UserEntity> existingUser = userRepository.findBySupabaseUserId(supabaseUserId);
@@ -154,17 +147,10 @@ public class AuthController {
      * This endpoint should be used for profile updates after initial creation.
      */
     @PatchMapping("/update-user")
+    @RequiresAuthentication
     public ResponseEntity<?> updateUser(@RequestBody Map<String, Object> userData) {
         logger.info("Update user endpoint called");
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        if (authentication == null || !authentication.isAuthenticated()) {
-            logger.warn("Attempted to update user without authentication");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Not authenticated"));
-        }
-        
-        String supabaseUserId = authentication.getName();
+        String supabaseUserId = securityUtils.requireUserId();
         
         // Find the existing user
         Optional<UserEntity> existingUserOpt = userRepository.findBySupabaseUserId(supabaseUserId);
@@ -233,17 +219,10 @@ public class AuthController {
      * Determines whether to create or update a user based on existence.
      */
     @PostMapping("/sync-user")
+    @RequiresAuthentication
     public ResponseEntity<?> syncUserData(@RequestBody Map<String, Object> userData) {
         logger.info("Sync user endpoint called (legacy)");
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        if (authentication == null || !authentication.isAuthenticated()) {
-            logger.warn("Attempted to sync user without authentication");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Not authenticated"));
-        }
-        
-        String supabaseUserId = authentication.getName();
+        String supabaseUserId = securityUtils.requireUserId();
         
         // Check if user exists to determine whether to create or update
         Optional<UserEntity> existingUser = userRepository.findBySupabaseUserId(supabaseUserId);

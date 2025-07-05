@@ -3,11 +3,9 @@ import { UserSettingsDto } from "../page";
 
 // Implement ZOD in the future
 
-export const fetchUserSettings = async (
-  userId: string
-): Promise<UserSettingsDto> => {
+export const fetchUserSettings = async (): Promise<UserSettingsDto> => {
   try {
-    const response = await fetchWithAuth(`/api/user/settings/${userId}`);
+    const response = await fetchWithAuth(`/api/user/settings`);
     if (!response.ok) {
       console.error(
         `Failed to fetch settings: ${response.status} ${response.statusText}`

@@ -70,7 +70,7 @@ const SettingsPage: React.FC = () => {
 
     const loadSettings = async () => {
       try {
-        const settingsData = await fetchUserSettings(userId);
+        const settingsData = await fetchUserSettings();
         if (settingsData) {
           setSettings(settingsData);
           setOriginalSettings(settingsData);
@@ -123,7 +123,7 @@ const SettingsPage: React.FC = () => {
       return;
     }
     try {
-      await updateUserSettings(userId, settings);
+      await updateUserSettings(settings);
       setOriginalSettings(settings); // Update the original settings to match current
 
       // Refresh the user settings in the auth context to ensure it has the latest data

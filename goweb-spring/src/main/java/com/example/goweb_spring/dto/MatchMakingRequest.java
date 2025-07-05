@@ -10,7 +10,6 @@ import lombok.Data;
 @AllArgsConstructor
 
 public class MatchMakingRequest {
-    private final String userId;
     private final int rating;
     private final BoardSize boardSize;
     private final TimeControl timeControl;
