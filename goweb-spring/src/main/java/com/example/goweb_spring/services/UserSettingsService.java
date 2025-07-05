@@ -36,21 +36,23 @@ public class UserSettingsService {
      */
     @Transactional
     public UserSettingsDto getSettingsForUser(String supabaseUserId) {
-        // First retrieve the user by Supabase ID
-        UserEntity user = userRepository.findBySupabaseUserId(supabaseUserId)
+        // First retrieve the user and their settings in one go.
+        UserEntity user = userRepository.findBySupabaseUserIdWithSettings(supabaseUserId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with Supabase ID: " + supabaseUserId));
 
-        // Find or create user settings
-        UserSettingsEntity entity = userSettingsRepository.findByUser(user)
-                .orElseGet(() -> {
-                    // Create default settings if not found
-                    UserSettingsEntity defaultSettings = createDefaultUserSettings(user);
-                    return userSettingsRepository.save(defaultSettings);
-                });
+        // Since we used a JOIN FETCH, the userSettings are already loaded.
+        // We just need to check if they are null and create them if they don't exist.
+        UserSettingsEntity entity = user.getUserSettings();
+        if (entity == null) {
+            entity = createDefaultUserSettings(user);
+            // The relationship is managed by UserEntity (mappedBy), so we set it on the user
+            // and saving the user will persist the new settings.
+            user.setUserSettings(entity);
+            userRepository.save(user);
+        }
                 
         return userSettingsMapper.toDto(entity);
     }
-    
     /**
      * Creates default user settings for a user
      * 
@@ -135,29 +137,8 @@ public class UserSettingsService {
                     return userSettingsRepository.save(defaultSettings);
                 });
 
-        // Update the fields from the DTO
-        if (settings.getAvatarUrl() != null) {
-            userSettings.setAvatarUrl(settings.getAvatarUrl());
-        }
-        if (settings.getBio() != null) {
-            userSettings.setBio(settings.getBio());
-        }
-        // Game preferences
-        if (settings.getBoardTheme() != null) {
-            userSettings.setBoardTheme(settings.getBoardTheme());
-        }
-        if (settings.getStoneTheme() != null) {
-            userSettings.setStoneTheme(settings.getStoneTheme());
-        }
-        if (settings.getSoundEffects() != null) {
-            userSettings.setSoundEffects(settings.getSoundEffects());
-        }
-        if (settings.getTimeControl() != null) {
-            userSettings.setTimeControl(settings.getTimeControl());
-        }
-        if (settings.getAiAssistance() != null) {
-            userSettings.setAiAssistance(settings.getAiAssistance());
-        }
+        // Use the mapper to update all fields from the DTO to the entity
+        userSettingsMapper.updateEntityFromDto(settings, userSettings);
         // Other settings can be updated similarly as needed
         
         userSettingsRepository.save(userSettings);

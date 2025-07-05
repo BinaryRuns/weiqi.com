@@ -21,8 +21,11 @@ import java.util.Random;
 public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    
+    public AuthController(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @GetMapping("/verify")
     public ResponseEntity<?> verifyToken() {

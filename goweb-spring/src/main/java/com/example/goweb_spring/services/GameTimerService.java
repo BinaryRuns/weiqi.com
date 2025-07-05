@@ -50,7 +50,8 @@ public class GameTimerService {
     public GameTimerService(GameRoomRepository gameRoomRepository, SimpMessagingTemplate messagingTemplate) {
         this.gameRoomRepository = gameRoomRepository;
         this.messagingTemplate = messagingTemplate;
-        logger.info("GameTimerService initialized");
+        logger.info("GameTimerService initialized at: {}", Instant.now());
+        System.out.println("CRITICAL: GameTimerService initialized at: " + Instant.now());
     }
 
     /**
@@ -58,6 +59,7 @@ public class GameTimerService {
      */
     @Scheduled(fixedRate = 1000)
     public void processAllActiveGames() {
+        
         // Prevent concurrent execution
         if (!processingInProgress.compareAndSet(false, true)) {
             logger.debug("Previous processing still in progress, skipping this run");
@@ -68,15 +70,11 @@ public class GameTimerService {
         int processedGames = 0;
         
         try {
-            // Get all game rooms from repository
-            Iterable<GameRoom> allRooms = gameRoomRepository.findAll();
-            
-            // Filter for active games (games with players that are not over)
-            List<GameRoom> activeGames = StreamSupport.stream(allRooms.spliterator(), false)
-                .filter(room -> room != null)
-                .filter(room -> room.getCurrentPlayers() > 0 && !room.isGameOver())
-                .limit(maxGamesToProcess) // Limit the number of games processed
-                .collect(Collectors.toList());
+            // Fetch only active games from the repository, which is much more efficient
+            List<GameRoom> activeGames = gameRoomRepository.findByGameOverFalse();
+
+            // The old filtering logic is no longer needed here as it's handled by the repository query.
+            // We can apply any additional in-memory filtering if necessary.
             
             processedGames = activeGames.size();
             
@@ -131,8 +129,14 @@ public class GameTimerService {
                 // Update timers
                 game.updateTimers();
                 
+                // Add debug logging for timer values
+                logger.debug("Game {} - Black time: {}, White time: {}, Current player: {}, Timeout check: {}", 
+                    game.getRoomId(), game.getBlackTime(), game.getWhiteTime(), 
+                    game.getCurrentPlayerColor(), game.isTimeout());
+                
                 // Check for timeouts
                 if (game.isTimeout()) {
+                    logger.info("--> SENDING timeout for {}", game.getRoomId());   // add temporarily
                     handleTimeout(game);
                     gamesNeedingSave.add(game);
                     continue;
@@ -190,6 +194,11 @@ public class GameTimerService {
             logger.error("Attempted to handle timeout for null game");
             return;
         }
+        
+        // Add detailed logging about the game state
+        logger.info("Handling timeout for game {} - Black time: {}, White time: {}, Current player: {}, GameOver: {}", 
+            game.getRoomId(), game.getBlackTime(), game.getWhiteTime(), 
+            game.getCurrentPlayerColor(), game.isGameOver());
         
         // Check if game is already marked as over to prevent duplicate notifications
         if (game.isGameOver()) {

@@ -74,6 +74,12 @@ const GameSetup: React.FC<GameSetupProps> = ({
       time: "30 min + 60s byoyomi",
       description: "Traditional timing",
     },
+    {
+      label: "Test",
+      value: "test",
+      time: "30 seconds",
+      description: "For quick testing only",
+    },
   ];
 
   const handleSizeSelect = (size: BoardSize) => {

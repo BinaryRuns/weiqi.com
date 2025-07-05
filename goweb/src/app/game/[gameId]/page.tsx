@@ -100,16 +100,22 @@ export default function GamePage() {
     const timeoutSubscription = subscribe<{ winner: string }>(
       `/topic/game/${params.gameId}/timeout`,
       (data) => {
+        console.log("Timeout: ", data);
         setResignMessage(`Time's up! ${data.winner} wins!`);
         setGameOver(true);
       }
     );
 
-    // // Subscribe to errors
-    // const errorSubscription = subscribe(`/user/queue/errors`, (message) => {
-    //   const errorData = JSON.parse(message.body);
-    //   console.error("WebSocket Error:", errorData);
-    // });
+    // Subscribe to errors
+    const errorSubscription = subscribe(`/user/queue/errors`, (msg) => {
+      console.log("Error: ", msg);
+      toast({
+        title: "Error",
+        description: msg.errorMessage as string,
+        variant: "destructive",
+        duration: 1000,
+      });
+    });
 
     // Subscribe to resign message
     const resignSubscription = subscribe<GameResign>(
@@ -140,6 +146,7 @@ export default function GamePage() {
       soundSubscription?.unsubscribe();
       resignSubscription?.unsubscribe();
       timeoutSubscription?.unsubscribe();
+      errorSubscription?.unsubscribe();
     };
   }, [isConnected, params.gameId, userId, toast, userName, subscribe, send]);
 

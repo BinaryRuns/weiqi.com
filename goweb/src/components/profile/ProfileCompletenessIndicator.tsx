@@ -1,71 +1,56 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React from "react";
 import { Progress } from "@/components/ui/progress";
 import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
-import { fetchUserSettings } from "@/app/settings/api/get-user-settings";
-import {
-  calculateProfileCompleteness,
-  getStandardProfileFields,
-} from "@/utils/profileCompleteness";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export function ProfileCompletenessIndicator() {
-  const { user } = useSupabaseAuth();
-  const [completeness, setCompleteness] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const {
+    user,
+    profileCompleteness,
+    isCompletenessLoading,
+    completenessError,
+  } = useSupabaseAuth();
 
-  // Memoize the component to prevent unnecessary re-renders
-  const indicator = useMemo(
-    () => (
+  // Show loading state from the context
+  if (isCompletenessLoading) {
+    return (
       <div className="w-full mt-2">
         <div className="flex justify-between items-center text-xs mb-1">
           <span>Profile</span>
-          <span>{completeness}%</span>
+          <Skeleton className="h-4 w-8" />
         </div>
-        <Progress value={completeness} className="h-1" />
+        <Skeleton className="h-1 w-full" />
       </div>
-    ),
-    [completeness]
+    );
+  }
+
+  // Show error state from the context
+  if (completenessError) {
+    return (
+      <Alert variant="destructive" className="mt-2">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>Failed to load profile details</AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Don't render anything if there is no user, or if the profile is already complete.
+  if (!user || profileCompleteness >= 100) {
+    return null;
+  }
+
+  // Render the indicator with the data from the context
+  return (
+    <div className="w-full mt-2">
+      <div className="flex justify-between items-center text-xs mb-1">
+        <span>Profile</span>
+        <span>{profileCompleteness}%</span>
+      </div>
+      <Progress value={profileCompleteness} className="h-1" />
+    </div>
   );
-
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const loadProfileCompleteness = async () => {
-      try {
-        setIsLoading(true);
-        const settings = await fetchUserSettings(user.id);
-
-        if (settings) {
-          // Use utility functions to calculate profile completeness
-          const profileFields = getStandardProfileFields(settings);
-          const completeness = calculateProfileCompleteness(profileFields);
-
-          setCompleteness(completeness);
-        } else {
-          // If no settings returned, default to 0% complete
-          setCompleteness(0);
-        }
-      } catch (error) {
-        console.error("Error loading profile completeness:", error);
-        // Don't show error, just default to 0% complete
-        setCompleteness(0);
-        setError(
-          error instanceof Error
-            ? error
-            : new Error("Failed to load profile data")
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProfileCompleteness();
-  }, [user?.id]);
-
-  // Don't render anything if loading, no user, or there was an error
-  if (isLoading || !user || error) return null;
-
-  return indicator;
 }

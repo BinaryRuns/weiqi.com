@@ -18,13 +18,17 @@ export interface ProfileField {
  * @returns A number between 0-100 representing completeness percentage
  */
 export function calculateProfileCompleteness(fields: ProfileField[]): number {
+  const totalWeight = fields.reduce((sum, field) => sum + field.weight, 0);
+
   const completedWeight = fields.reduce((total, field) => {
     return (
       total + (field.value && field.value.trim() !== "" ? field.weight : 0)
     );
   }, 0);
 
-  return completedWeight;
+  return totalWeight > 0
+    ? Math.round((completedWeight / totalWeight) * 100)
+    : 0;
 }
 
 /**

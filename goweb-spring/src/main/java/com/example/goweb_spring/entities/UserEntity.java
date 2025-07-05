@@ -16,6 +16,9 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserSettingsEntity userSettings;
+
     // Supabase user ID
     @Column(nullable = false, unique = true, updatable = false, length = 36)
     private String supabaseUserId;

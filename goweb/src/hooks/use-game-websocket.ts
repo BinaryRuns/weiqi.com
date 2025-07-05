@@ -3,6 +3,7 @@ import { useWebSocket } from "@/contexts/WebSocketContext";
 import { GameState } from "@/types/game-types";
 import { ChatMessage } from "@/types/ChatMessage";
 import { WS_URL } from "@/config/api";
+import { toast } from "@/use-toast";
 
 type GameMessageHandler = {
   onGameStateUpdate?: (state: GameState) => void;
@@ -60,11 +61,21 @@ export const useGameWebSocket = (
       }
     );
 
+    const errorSub = client.subscribe("/user/queue/errors", (msg) => {
+      const { errorMessage } = JSON.parse(msg.body) as ErrorMessage;
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    });
+
     return () => {
       gameSub.unsubscribe();
       timerSub.unsubscribe();
       chatSub.unsubscribe();
       gameEndSub.unsubscribe();
+      errorSub.unsubscribe(); // ← add this
     };
   }, [client, isConnected, gameId, handlers]);
 

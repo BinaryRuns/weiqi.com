@@ -47,8 +47,8 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
 
   const handleLogOut = async () => {
     try {
-      await signOut();
       setIsDropdownOpen(false);
+      await signOut();
     } catch (error) {
       console.error("Error during logout:", error);
     }
