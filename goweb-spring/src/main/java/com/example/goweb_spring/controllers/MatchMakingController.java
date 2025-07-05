@@ -30,6 +30,12 @@ public class MatchMakingController {
         return ResponseEntity.ok("Player enqueued successfully.");
     }
 
+    /**
+     * Removes a player from the matchmaking queue based on the provided player ID.
+     *
+     * @param playerId the unique identifier of the player to remove from the queue
+     * @return a response indicating successful removal from the queue
+     */
     @PostMapping("/cancel/{playerId}")
     public ResponseEntity<String> cancelQueue(@PathVariable String playerId) {
         matchmakingService.removePlayerById(playerId);

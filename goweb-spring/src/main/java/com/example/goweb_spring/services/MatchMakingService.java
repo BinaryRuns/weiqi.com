@@ -42,11 +42,25 @@ public class MatchMakingService {
         System.out.println("Enqueued " + entry + " in queue: " + queueKey);
     }
 
+    /**
+     * Removes the specified player entry from the matchmaking queue.
+     *
+     * @param entry the matchmaking entry representing the player to remove
+     */
     public void removePlayer(MatchmakingEntry entry) {
         matchmakingRepository.remove(entry);
         System.out.println("Removing " + entry);
     }
     
+    /**
+     * Removes a player from the matchmaking queue by their player ID.
+     *
+     * Attempts to deserialize the player's matchmaking entry and remove them from the queue.
+     * If deserialization fails, the player's entry is still removed from the repository to ensure cleanup.
+     * Logs the outcome of the removal process.
+     *
+     * @param playerId the unique identifier of the player to remove from matchmaking
+     */
     public void removePlayerById(String playerId) {
         String entryJson = matchmakingRepository.getPlayerEntry(playerId);
         if (entryJson != null) {
@@ -64,6 +78,15 @@ public class MatchMakingService {
         }
     }
 
+    /**
+     * Calculates a dynamic rating range for matchmaking based on the player's rating and wait time.
+     *
+     * The range starts at a base offset of 100 and expands by 1 for every 100 seconds waited, up to a maximum offset of 1000.
+     *
+     * @param rating     the player's current rating
+     * @param enqueuedAt the time the player was enqueued for matchmaking
+     * @return an array containing the minimum and maximum rating bounds for potential matches
+     */
     private int[] computeDynamicRange(int rating, Instant enqueuedAt) {
         long waitingSeconds = Duration.between(enqueuedAt, Instant.now()).toSeconds();
         int baseOffset = 100;
