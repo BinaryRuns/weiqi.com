@@ -22,7 +22,6 @@ export default function PlayPage() {
 
   const dispatch = useDispatch();
   const { user } = useSupabaseAuth();
-  const userId = user?.id;
   const userName =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
 
@@ -49,8 +48,8 @@ export default function PlayPage() {
   };
 
   const joinMatchmakingQueue = async (config: GameConfig) => {
-    if (!userId) {
-      console.error("No user ID available");
+    if (!user) {
+      console.error("No user available");
       return;
     }
 
@@ -60,7 +59,6 @@ export default function PlayPage() {
       const response = await fetchWithAuth("/api/matchmaking/join", {
         method: "POST",
         body: JSON.stringify({
-          userId,
           rating: 500,
           boardSize: mapBoardSize(config.size),
           timeControl: config.timeControl.toUpperCase(),

@@ -76,6 +76,7 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE}
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
     volumes:
       - ./goweb-spring:/app
       - ~/.m2:/root/.m2

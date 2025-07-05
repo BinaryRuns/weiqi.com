@@ -37,14 +37,9 @@ const WaitingTimer: React.FC = () => {
   }, [waiting, dispatch]);
 
   const cancelMatchmaking = async () => {
-    if (!userId) {
-      console.error("No user ID available");
-      return;
-    }
-
     try {
-      const response = await fetchWithAuth(`/api/matchmaking/cancel/${userId}`, {
-        method: "POST",
+      const response = await fetchWithAuth(`/api/matchmaking/cancel`, {
+        method: "DELETE",
       });
 
       if (!response.ok) {

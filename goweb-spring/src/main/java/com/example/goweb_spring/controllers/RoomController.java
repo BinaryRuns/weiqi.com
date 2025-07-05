@@ -1,9 +1,11 @@
 package com.example.goweb_spring.controllers;
 
 
+import com.example.goweb_spring.annotations.RequiresAuthentication;
 import com.example.goweb_spring.dto.CreateRoomRequest;
 import com.example.goweb_spring.model.GameRoom;
 import com.example.goweb_spring.services.GameRoomService;
+import com.example.goweb_spring.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,12 +19,15 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/game")
+@RequiresAuthentication
 public class RoomController {
 
     private final GameRoomService gameRoomService;
+    private final SecurityUtils securityUtils;
 
-    public RoomController(GameRoomService gameRoomService) {
+    public RoomController(GameRoomService gameRoomService, SecurityUtils securityUtils) {
         this.gameRoomService = gameRoomService;
+        this.securityUtils = securityUtils;
     }
 
 
