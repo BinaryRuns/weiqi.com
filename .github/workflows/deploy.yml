@@ -56,36 +56,43 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Update the docker-compose.yml file with the new image
+            # Ensure /app directory exists and we have permissions
+            sudo mkdir -p /app
+            sudo chown ec2-user:ec2-user /app
             cd /app
-            echo "version: '3'" > docker-compose.yml
-            echo "services:" >> docker-compose.yml
-            echo "  backend:" >> docker-compose.yml
-            echo "    image: \"${{ steps.login-ecr.outputs.registry }}/weiqi-backend:${{ github.sha }}\"" >> docker-compose.yml
-            echo "    restart: always" >> docker-compose.yml
-            echo "    ports:" >> docker-compose.yml
-            echo "      - \"443:8443\"" >> docker-compose.yml
-            echo "    volumes:" >> docker-compose.yml
-            echo "      - /etc/nginx/ssl:/etc/ssl" >> docker-compose.yml
-            echo "    environment:" >> docker-compose.yml
-            echo "      - SPRING_DATASOURCE_URL=jdbc:postgresql://\"${{ secrets.DB_ENDPOINT }}\":5432/\"${{ secrets.DB_NAME }}\"" >> docker-compose.yml
-            echo "      - SPRING_DATASOURCE_USERNAME=\"${{ secrets.DB_USERNAME }}\"" >> docker-compose.yml
-            echo "      - SPRING_DATASOURCE_PASSWORD=\"${{ secrets.DB_PASSWORD }}\"" >> docker-compose.yml
-            echo "      - SPRING_DATA_REDIS_HOST=\"${{ secrets.REDIS_ENDPOINT }}\"" >> docker-compose.yml
-            echo "      - SPRING_DATA_REDIS_PORT=6379" >> docker-compose.yml
-            echo "      - SPRING_PROFILES_ACTIVE=\"${{ secrets.SPRING_PROFILE }}\"" >> docker-compose.yml
-            echo "      - SUPABASE_JWT_SECRET=\"${{ secrets.SUPABASE_JWT_SECRET }}\"" >> docker-compose.yml
-            echo "      - SERVER_PORT=8443" >> docker-compose.yml
-            echo "      - SERVER_SSL_ENABLED=true" >> docker-compose.yml
-            echo "      - SERVER_SSL_KEY_STORE_TYPE=PKCS12" >> docker-compose.yml
-            echo "      - SERVER_SSL_KEY_STORE=/etc/ssl/keystore.p12" >> docker-compose.yml
-            echo "      - SERVER_SSL_KEY_STORE_PASSWORD=\"${{ secrets.SSL_KEY_STORE_PASSWORD }}\"" >> docker-compose.yml
-            echo "      - SERVER_SSL_KEY_ALIAS=tomcat" >> docker-compose.yml
+
+            # Update the docker-compose.yml file with the new image
+            sudo bash -c 'echo "version: '\''3'\''" > docker-compose.yml'
+            sudo bash -c 'echo "services:" >> docker-compose.yml'
+            sudo bash -c 'echo "  backend:" >> docker-compose.yml'
+            sudo bash -c 'echo "    image: \"${{ steps.login-ecr.outputs.registry }}/weiqi-backend:${{ github.sha }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "    restart: always" >> docker-compose.yml'
+            sudo bash -c 'echo "    ports:" >> docker-compose.yml'
+            sudo bash -c 'echo "      - \"443:8443\"" >> docker-compose.yml'
+            sudo bash -c 'echo "    volumes:" >> docker-compose.yml'
+            sudo bash -c 'echo "      - /etc/nginx/ssl:/etc/ssl" >> docker-compose.yml'
+            sudo bash -c 'echo "    environment:" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SPRING_DATASOURCE_URL=jdbc:postgresql://\"${{ secrets.DB_ENDPOINT }}\":5432/\"${{ secrets.DB_NAME }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SPRING_DATASOURCE_USERNAME=\"${{ secrets.DB_USERNAME }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SPRING_DATASOURCE_PASSWORD=\"${{ secrets.DB_PASSWORD }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SPRING_DATA_REDIS_HOST=\"${{ secrets.REDIS_ENDPOINT }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SPRING_DATA_REDIS_PORT=6379" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SPRING_PROFILES_ACTIVE=\"${{ secrets.SPRING_PROFILE }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SUPABASE_JWT_SECRET=\"${{ secrets.SUPABASE_JWT_SECRET }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SERVER_PORT=8443" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SERVER_SSL_ENABLED=true" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SERVER_SSL_KEY_STORE_TYPE=PKCS12" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SERVER_SSL_KEY_STORE=/etc/ssl/keystore.p12" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SERVER_SSL_KEY_STORE_PASSWORD=\"${{ secrets.SSL_KEY_STORE_PASSWORD }}\"" >> docker-compose.yml'
+            sudo bash -c 'echo "      - SERVER_SSL_KEY_ALIAS=tomcat" >> docker-compose.yml'
+
+            # Fix Docker permissions if needed
+            sudo usermod -aG docker ec2-user
 
             # Pull the new image and restart the container
-            aws ecr get-login-password --region "${{ secrets.AWS_REGION }}" | docker login --username AWS --password-stdin "${{ steps.login-ecr.outputs.registry }}"
-            docker-compose pull
-            docker-compose up -d
+            aws ecr get-login-password --region "${{ secrets.AWS_REGION }}" | sudo docker login --username AWS --password-stdin "${{ steps.login-ecr.outputs.registry }}"
+            sudo docker-compose pull
+            sudo docker-compose up -d
 
   # Frontend deployment is now handled in a separate personal repository
   # This job is kept as a notification step
