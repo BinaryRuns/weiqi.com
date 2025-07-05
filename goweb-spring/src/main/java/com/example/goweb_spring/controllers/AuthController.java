@@ -153,7 +153,7 @@ public class AuthController {
      * Updates an existing user's profile data.
      * This endpoint should be used for profile updates after initial creation.
      */
-    @PostMapping("/update-user")
+    @PatchMapping("/update-user")
     public ResponseEntity<?> updateUser(@RequestBody Map<String, Object> userData) {
         logger.info("Update user endpoint called");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

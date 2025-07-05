@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.index.Indexed;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -23,6 +25,8 @@ import java.util.*;
 @NoArgsConstructor
 @RedisHash("GameRoom")
 public class GameRoom implements Serializable {
+    private static final Logger logger = LoggerFactory.getLogger(GameRoom.class);
+    
     @Id
     private String roomId;
     private String roomName;
@@ -170,7 +174,7 @@ public class GameRoom implements Serializable {
     public boolean isTimeout() {
         if (gameOver) {
             // Already game over, can't timeout
-            System.out.println("DEBUG - Game already over, can't timeout: Room=" + roomId);
+            logger.debug("Game already over, can't timeout: Room={}", roomId);
             return false;
         }
         
@@ -178,17 +182,11 @@ public class GameRoom implements Serializable {
         boolean whiteTimeout = whiteTime <= 0;
         boolean isTimeoutCondition = blackTimeout || whiteTimeout;
         
-        // Log ALL timeout checks for debugging
-        System.out.println("DEBUG - Timeout check: Room=" + roomId + 
-            ", Black=" + blackTime + ", White=" + whiteTime + 
-            ", CurrentPlayer=" + currentPlayerColor +
-            ", GameOver=" + gameOver + ", Result=" + isTimeoutCondition);
-        
+
         // If we have a timeout, log it prominently
         if (isTimeoutCondition) {
-            System.out.println("!!!! TIMEOUT DETECTED !!!! Room=" + roomId + 
-                ", Black=" + blackTime + ", White=" + whiteTime + 
-                ", Timeout player: " + (blackTimeout ? "BLACK" : "WHITE"));
+            logger.info("TIMEOUT DETECTED: Room={}, Black={}, White={}, Timeout player: {}", 
+                roomId, blackTime, whiteTime, (blackTimeout ? "BLACK" : "WHITE"));
         }
         
         return isTimeoutCondition;

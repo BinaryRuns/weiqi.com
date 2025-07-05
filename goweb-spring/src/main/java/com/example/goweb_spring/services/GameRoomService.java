@@ -13,6 +13,8 @@ import com.example.goweb_spring.repositories.GameRoomRepository;
 import com.example.goweb_spring.repositories.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,8 @@ import org.springframework.messaging.simp.user.SimpUserRegistry;
 
 @Service
 public class GameRoomService {
+    private static final Logger logger = LoggerFactory.getLogger(GameRoomService.class);
+    
     private final GameRoomRepository gameRoomRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final UserRepository userRepository;
@@ -264,7 +268,7 @@ public class GameRoomService {
             simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
                     new RoomEventResponse("UPDATE_BOARD", userId, gameRoomDTO)); 
         } catch (IllegalStateException | IllegalArgumentException e) {
-            System.err.println("Illegal move: " + e.getMessage());
+            logger.warn("Illegal move: {}", e.getMessage());
             // ILLEGAL_MOVE covers: occupied, suicide, ko, not your turn, room not full, …
             sendErrorToUser(userId, "ILLEGAL_MOVE", e.getMessage());
         }
