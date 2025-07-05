@@ -13,6 +13,8 @@ import com.example.goweb_spring.repositories.GameRoomRepository;
 import com.example.goweb_spring.repositories.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,8 @@ import org.springframework.messaging.simp.user.SimpUserRegistry;
 
 @Service
 public class GameRoomService {
+    private static final Logger logger = LoggerFactory.getLogger(GameRoomService.class);
+    
     private final GameRoomRepository gameRoomRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final UserRepository userRepository;
@@ -214,54 +218,68 @@ public class GameRoomService {
     }
 
     public void placeStone(String roomId, String userId, int x, int y) {
-        GameRoom gameRoom = gameRoomRepository.findById(roomId)
-                .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
+        try {
+            GameRoom gameRoom = gameRoomRepository.findById(roomId)
+                    .orElseThrow(() -> new RoomNotFoundException("Room does not exist"));
 
-        // Add check for minimum required players
-        if (gameRoom.getCurrentPlayers() < gameRoom.getMaxPlayers()) {
-            throw new IllegalStateException("Cannot place stones until all players have joined.");
+            // Add check for minimum required players
+            if (gameRoom.getCurrentPlayers() < gameRoom.getMaxPlayers()) {
+                throw new IllegalStateException("Cannot place stones until all players have joined.");
+            }
+
+            Player player = gameRoom.getPlayers().stream()
+                    .filter(p -> p.getUserId().equals(userId))
+                    .findFirst()
+                    .orElseThrow(() -> new UserNotFoundException("Player not found in game"));
+
+            // Check if it's the player's turn
+            if (!gameRoom.getCurrentPlayerColor().equalsIgnoreCase(player.getColor())) {
+                throw new IllegalStateException("It's not your turn.");
+            }
+
+            // Update timers before processing the move
+            gameRoom.updateTimers();
+            
+            // Apply time increment if using Fischer
+            if (gameRoom.getTimeControl().getIncrement() > 0) {
+                gameRoom.applyTimeIncrement();
+            }
+
+            List<List<Integer>> updatedStones = GoGameLogic.placeMove(
+                    gameRoom.getStones(), x, y, player.getColor()
+            );
+
+            gameRoom.setStones(updatedStones); // Place move
+
+            // Send sound notification before changing the turn
+            sendSoundNotification(roomId, player.getColor());
+
+            // Switch current player (also updates timestamps)
+            gameRoom.switchPlayer();
+            
+            // Save changes
+            gameRoomRepository.save(gameRoom); 
+
+            // Send immediate timer update
+            gameTimerService.sendImmediateTimerUpdate(roomId);
+
+            // Broadcast the updated game state to all clients
+            GameRoomResponse gameRoomDTO = convertToDTO(gameRoom);
+            simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
+                    new RoomEventResponse("UPDATE_BOARD", userId, gameRoomDTO)); 
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            logger.warn("Illegal move: {}", e.getMessage());
+            // ILLEGAL_MOVE covers: occupied, suicide, ko, not your turn, room not full, …
+            sendErrorToUser(userId, "ILLEGAL_MOVE", e.getMessage());
         }
-
-        Player player = gameRoom.getPlayers().stream()
-                .filter(p -> p.getUserId().equals(userId))
-                .findFirst()
-                .orElseThrow(() -> new UserNotFoundException("Player not found in game"));
-
-        // Check if it's the player's turn
-        if (!gameRoom.getCurrentPlayerColor().equalsIgnoreCase(player.getColor())) {
-            throw new IllegalStateException("It's not your turn.");
+        // — user / room look-ups —
+        catch (UserNotFoundException e)  { sendErrorToUser(userId,"USER_NOT_FOUND", e.getMessage()); }
+        catch (RoomNotFoundException e)  { sendErrorToUser(userId,"ROOM_NOT_FOUND", e.getMessage()); }
+        // — everything else —
+        catch (Exception e) {
+            sendErrorToUser(userId,"UNEXPECTED_ERROR",
+                            "Something went wrong while processing your move.");
         }
-
-        // Update timers before processing the move
-        gameRoom.updateTimers();
-        
-        // Apply time increment if using Fischer
-        if (gameRoom.getTimeControl().getIncrement() > 0) {
-            gameRoom.applyTimeIncrement();
-        }
-
-        List<List<Integer>> updatedStones = GoGameLogic.placeMove(
-                gameRoom.getStones(), x, y, player.getColor()
-        );
-
-        gameRoom.setStones(updatedStones); // Place move
-
-        // Send sound notification before changing the turn
-        sendSoundNotification(roomId, player.getColor());
-
-        // Switch current player (also updates timestamps)
-        gameRoom.switchPlayer();
-        
-        // Save changes
-        gameRoomRepository.save(gameRoom); 
-
-        // Send immediate timer update
-        gameTimerService.sendImmediateTimerUpdate(roomId);
-
-        // Broadcast the updated game state to all clients
-        GameRoomResponse gameRoomDTO = convertToDTO(gameRoom);
-        simpMessagingTemplate.convertAndSend("/topic/game/" + roomId,
-                new RoomEventResponse("UPDATE_BOARD", userId, gameRoomDTO)); 
     }
 
     /**

@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSupabaseAuth } from "@/auth/SupabaseAuthProvider";
+import { ProfileCompletenessIndicator } from "@/components/profile/ProfileCompletenessIndicator";
 
 const navItems = [
   { href: "/play", label: "Play", icon: GamepadIcon },
@@ -46,15 +47,16 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
 
   const handleLogOut = async () => {
     try {
+      setIsDropdownOpen(false);
       await signOut();
-        setIsDropdownOpen(false);
     } catch (error) {
       console.error("Error during logout:", error);
     }
   };
 
   // Use user data from Supabase
-  const displayName = user?.user_metadata?.username || user?.email?.split('@')[0] || "User";
+  const displayName =
+    user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
   const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
@@ -103,18 +105,23 @@ export function Sidebar({ className = "", isMobile = false }: SidebarProps) {
                   src={avatarUrl || "https://example.com/user-avatar.jpg"}
                   alt="User Avatar"
                 />
-                <AvatarFallback>{displayName.substring(0,2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>
+                  {displayName.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <span className="font-medium truncate overflow-hidden whitespace-nowrap">
                 {displayName}
               </span>
             </div>
+
+            {/* Profile Completeness Indicator */}
+            <ProfileCompletenessIndicator />
             {isDropdownOpen && (
               <div className="absolute bottom-full mb-2 p-3 w-48 bg-darkcard border border-border rounded-lg shadow-lg">
                 <Button
                   variant="ghost"
                   className="w-full justify-start"
-                  onClick={() => router.push('/settings')}
+                  onClick={() => router.push("/settings")}
                 >
                   <SettingsIcon className="w-4 h-4 mr-2" />
                   Settings

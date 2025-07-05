@@ -34,14 +34,73 @@ public class UserSettingsService {
      * @param supabaseUserId the Supabase User ID
      * @return a DTO containing the settings
      */
+    @Transactional
     public UserSettingsDto getSettingsForUser(String supabaseUserId) {
-        // First retrieve the user by Supabase ID
-        UserEntity user = userRepository.findBySupabaseUserId(supabaseUserId)
+        // First retrieve the user and their settings in one go.
+        UserEntity user = userRepository.findBySupabaseUserIdWithSettings(supabaseUserId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with Supabase ID: " + supabaseUserId));
 
-        UserSettingsEntity entity = userSettingsRepository.findByUser(user)
-                .orElseThrow(() -> new EntityNotFoundException("Settings not found for user: " + user.getId()));
+        // Since we used a JOIN FETCH, the userSettings are already loaded.
+        // We just need to check if they are null and create them if they don't exist.
+        UserSettingsEntity entity = user.getUserSettings();
+        if (entity == null) {
+            entity = createDefaultUserSettings(user);
+            // The relationship is managed by UserEntity (mappedBy), so we set it on the user
+            // and saving the user will persist the new settings.
+            user.setUserSettings(entity);
+            userRepository.save(user);
+        }
+                
         return userSettingsMapper.toDto(entity);
+    }
+    /**
+     * Creates default user settings for a user
+     * 
+     * @param user the user entity
+     * @return a new UserSettingsEntity with default values
+     */
+    private UserSettingsEntity createDefaultUserSettings(UserEntity user) {
+        UserSettingsEntity settings = new UserSettingsEntity();
+        settings.setUser(user);
+        
+        // Set default values
+        settings.setAvatarUrl(user.getAvatarUrl()); // Use avatar from user if available
+        settings.setBio("");
+        
+        // Game Preferences defaults
+        settings.setBoardTheme("classic");
+        settings.setStoneTheme("classic");
+        settings.setSoundEffects(true);
+        settings.setTimeControl("standard");
+        settings.setAiAssistance(true);
+        
+        // Notification defaults
+        settings.setEmailNotifications(true);
+        settings.setSmsNotifications(false);
+        settings.setInAppNotifications(true);
+        
+        // Matchmaking defaults
+        settings.setDisplayRatings(true);
+        settings.setMatchmakingFilters("");
+        
+        // Display defaults
+        settings.setTheme("dark");
+        settings.setFontSize("default");
+        settings.setAccessibilityOptions("");
+        settings.setLanguage("en");
+        settings.setTimezone("UTC");
+        
+        // Privacy defaults
+        settings.setTwoFactor(false);
+        settings.setLoginAlerts(true);
+        settings.setBlockedUsers("");
+        
+        // Advanced defaults
+        settings.setGameHistory("");
+        settings.setApiKey("");
+        settings.setBetaFeatures(false);
+        
+        return settings;
     }
 
     /**
@@ -70,13 +129,18 @@ public class UserSettingsService {
         user.setLastSyncedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // Update extended settings via the mapper
+        // Find or create user settings
         UserSettingsEntity userSettings = userSettingsRepository.findByUser(user)
-                .orElseThrow(() -> new EntityNotFoundException("Settings not found for user: " + user.getId()));
+                .orElseGet(() -> {
+                    // Create default settings if not found
+                    UserSettingsEntity defaultSettings = createDefaultUserSettings(user);
+                    return userSettingsRepository.save(defaultSettings);
+                });
 
-        // This call will update the fields of userSettings with values from the DTO.
-        // userSettingsMapper.updateEntityFromDto(settings, userSettings);
-
+        // Use the mapper to update all fields from the DTO to the entity
+        userSettingsMapper.updateEntityFromDto(settings, userSettings);
+        // Other settings can be updated similarly as needed
+        
         userSettingsRepository.save(userSettings);
     }
     
@@ -110,6 +174,16 @@ public class UserSettingsService {
         user.setAvatarUrl(avatarUrl);
         user.setLastSyncedAt(LocalDateTime.now());
         
-        return userRepository.save(user);
+        // Save the user
+        UserEntity savedUser = userRepository.save(user);
+        
+        // Ensure user settings exist
+        userSettingsRepository.findByUser(savedUser)
+            .orElseGet(() -> {
+                UserSettingsEntity defaultSettings = createDefaultUserSettings(savedUser);
+                return userSettingsRepository.save(defaultSettings);
+            });
+        
+        return savedUser;
     }
 }

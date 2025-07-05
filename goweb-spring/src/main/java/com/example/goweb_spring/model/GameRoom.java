@@ -9,16 +9,24 @@ import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.index.Indexed;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.Duration;          // ← add this
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+
 
 @Data
 @NoArgsConstructor
 @RedisHash("GameRoom")
 public class GameRoom implements Serializable {
+    private static final Logger logger = LoggerFactory.getLogger(GameRoom.class);
+    
     @Id
     private String roomId;
     private String roomName;
@@ -49,6 +57,7 @@ public class GameRoom implements Serializable {
     private boolean paused = false;
     
     // Flag to track if the game is over
+    @Indexed
     private boolean gameOver = false;
     
     // Store the winner when game ends
@@ -118,22 +127,21 @@ public class GameRoom implements Serializable {
      * This replaces the old decrementTimer method
      */
     public void updateTimers() {
-        if (paused || lastTimeUpdateTimestamp == null || gameOver) {
-            return;
-        }
-        
-        long elapsedSeconds = ChronoUnit.SECONDS.between(lastTimeUpdateTimestamp, Instant.now());
-        if (elapsedSeconds <= 0) {
-            return;
-        }
-        
+        if (paused || lastTimeUpdateTimestamp == null || gameOver) return;
+    
+        long elapsedMillis =
+                Duration.between(lastTimeUpdateTimestamp, Instant.now()).toMillis();
+        if (elapsedMillis < 1000) return;                  // don’t update yet
+    
+        long elapsedSeconds = elapsedMillis / 1000;        // whole seconds to deduct
+    
         if ("black".equals(currentPlayerColor)) {
             blackTime -= elapsedSeconds;
-        } else if ("white".equals(currentPlayerColor)) {
+        } else {
             whiteTime -= elapsedSeconds;
         }
-        
-        lastTimeUpdateTimestamp = Instant.now();
+    
+        lastTimeUpdateTimestamp = lastTimeUpdateTimestamp.plusSeconds(elapsedSeconds);
     }
 
     /**
@@ -165,9 +173,23 @@ public class GameRoom implements Serializable {
      */
     public boolean isTimeout() {
         if (gameOver) {
+            // Already game over, can't timeout
+            logger.debug("Game already over, can't timeout: Room={}", roomId);
             return false;
         }
-        return blackTime <= 0 || whiteTime <= 0;
+        
+        boolean blackTimeout = blackTime <= 0;
+        boolean whiteTimeout = whiteTime <= 0;
+        boolean isTimeoutCondition = blackTimeout || whiteTimeout;
+        
+
+        // If we have a timeout, log it prominently
+        if (isTimeoutCondition) {
+            logger.info("TIMEOUT DETECTED: Room={}, Black={}, White={}, Timeout player: {}", 
+                roomId, blackTime, whiteTime, (blackTimeout ? "BLACK" : "WHITE"));
+        }
+        
+        return isTimeoutCondition;
     }
     
     /**

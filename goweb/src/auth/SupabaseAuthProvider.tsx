@@ -1,157 +1,254 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
-import { AuthProvider } from '@/components/login/AuthProviderButton';
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { AuthProvider } from "@/components/login/AuthProviderButton";
+import { fetchUserSettings } from "@/app/settings/api/get-user-settings";
+import {
+  calculateProfileCompleteness,
+  getStandardProfileFields,
+} from "@/utils/profileCompleteness";
 
-// Create the auth context
+// --- Types and Enums ---
+
+export enum AuthErrorType {
+  USERNAME_CONFLICT = "username_conflict",
+  EMAIL_CONFLICT = "email_conflict",
+  NETWORK_ERROR = "network_error",
+  SERVER_ERROR = "server_error",
+  UNAUTHORIZED = "unauthorized",
+  UNKNOWN = "unknown",
+}
+
+export type AuthError = {
+  type: AuthErrorType;
+  message: string;
+  details?: any;
+};
+
 type AuthContextType = {
   session: Session | null;
   user: User | null;
+  loading: boolean;
+  profileCompleteness: number;
+  isCompletenessLoading: boolean;
+  completenessError: Error | null;
+  authError: AuthError | null;
   signIn: (provider: AuthProvider) => Promise<void>;
   signOut: () => Promise<void>;
-  loading: boolean;
+  forceUserSync: () => Promise<void>;
+  refreshUserSettings: () => Promise<void>;
 };
+
+// --- Context Definition ---
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Define a key for localStorage user sync flag
-const getUserSyncKey = (userId: string) => `user_synced_${userId}`;
+// --- LocalStorage Keys ---
 
-/**
- * Authentication provider that manages Supabase auth state
- * and ensures users are synced with the backend database
- */
-export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }) => {
+const getUserSyncKey = (userId: string) => `user_synced_${userId}`;
+const getUserSettingsKey = (userId: string) => `user_settings_${userId}`;
+
+// --- Auth Provider Component ---
+
+export const SupabaseAuthProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [profileCompleteness, setProfileCompleteness] = useState(0);
+  const [isCompletenessLoading, setIsCompletenessLoading] = useState(true);
+  const [completenessError, setCompletenessError] = useState<Error | null>(
+    null
+  );
   const router = useRouter();
 
-  // Function to ensure user exists in our backend
-  const ensureUserInBackend = async (currentUser: User, token: string) => {
-    try {
-      if (!currentUser.email) {
-        console.error('User has no email, cannot sync with backend');
-        return;
-      }
-
-      // Prepare user data from Supabase
-      const userData = {
-        email: currentUser.email,
-        username: currentUser.user_metadata?.username || 
-                 currentUser.user_metadata?.full_name || 
-                 `user_${currentUser.id.substring(0, 8)}`,
-        avatarUrl: currentUser.user_metadata?.avatar_url,
-        skillLevel: currentUser.user_metadata?.skill_level || 'beginner'
-      };
-
-      // Send to our backend
-      const syncResponse = await fetch('/api/auth/sync-user', {
-        method: 'POST',
+  const syncUserWithBackend = async (
+    currentUser: User,
+    token: string
+  ): Promise<void> => {
+    // We only need to sync the user if they haven't been synced before.
+    if (!localStorage.getItem(getUserSyncKey(currentUser.id))) {
+      const syncResponse = await fetch("/api/auth/create-user", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({
+          email: currentUser.email,
+          username:
+            currentUser.user_metadata?.username ||
+            currentUser.user_metadata?.full_name ||
+            `user_${currentUser.id.substring(0, 8)}`,
+          avatarUrl: currentUser.user_metadata?.avatar_url,
+          skillLevel: currentUser.user_metadata?.skill_level || "beginner",
+        }),
       });
-      
-      const responseText = await syncResponse.text();
-      
-      if (!syncResponse.ok) {
-        if (syncResponse.status === 409) {
-          // Email conflict - user exists with different ID
-          try {
-            const errorData = JSON.parse(responseText);
-            console.warn("User email conflict detected:", errorData);
-            return;
-          } catch (e) {
-            console.error('Failed to parse conflict error response');
-          }
-        }
-        
-        console.error('Failed to sync user with backend:', syncResponse.status);
-        return;
+
+      if (!syncResponse.ok && syncResponse.status !== 409) {
+        throw new Error("Failed to sync user with backend.");
       }
-      
-      // Mark user as synced regardless of response parsing success
-      localStorage.setItem(getUserSyncKey(currentUser.id), 'true');
-    } catch (error) {
-      console.error('Error ensuring user in backend:', error);
+      localStorage.setItem(getUserSyncKey(currentUser.id), "true");
     }
   };
 
-  // Check if a user has already been synced
-  const hasUserBeenSynced = (userId: string) => {
+  const loadUserAndSettings = async (
+    currentUser: User,
+    token: string
+  ): Promise<void> => {
+    setIsCompletenessLoading(true);
+    setCompletenessError(null);
+
     try {
-      return localStorage.getItem(getUserSyncKey(userId)) === 'true';
-    } catch (e) {
-      return false;
-    }
-  };
+      // Check for cached settings first to prevent flashing during hot reloads
+      const cachedSettingsJson = sessionStorage.getItem(
+        getUserSettingsKey(currentUser.id)
+      );
+      if (cachedSettingsJson) {
+        try {
+          const cachedSettings = JSON.parse(cachedSettingsJson);
+          const fields = getStandardProfileFields(cachedSettings);
+          const completeness = calculateProfileCompleteness(fields);
+          setProfileCompleteness(completeness);
+          setIsCompletenessLoading(false);
 
-  // Initialize the auth state when the component mounts
-  useEffect(() => {
-    let mounted = true;
-    
-    const initializeAuth = async () => {
-      try {
-        // Get the current session and user
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          // Only sync the user if they haven't been synced before
-          if (session?.user && !hasUserBeenSynced(session.user.id)) {
-            await ensureUserInBackend(session.user, session.access_token);
-          }
+          // Continue with sync in background
+          syncUserWithBackend(currentUser, token).catch(console.error);
+          return;
+        } catch (e) {
+          console.error("Error parsing cached settings:", e);
+          // Continue with normal flow if parsing fails
         }
+      }
 
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            if (!mounted || !session) return;
-            
-            setSession(session);
-            setUser(session?.user ?? null);
-            
-            // Only sync on sign in or update if not already synced
-            const needsSync = ['SIGNED_IN', 'USER_UPDATED'].includes(event);
-            if (session?.user && needsSync && !hasUserBeenSynced(session.user.id)) {
-              await ensureUserInBackend(session.user, session.access_token);
-            }
-          }
+      await syncUserWithBackend(currentUser, token);
+
+      const settings = await fetchUserSettings(currentUser.id);
+      if (settings) {
+        // Cache the settings for future hot reloads
+        sessionStorage.setItem(
+          getUserSettingsKey(currentUser.id),
+          JSON.stringify(settings)
         );
 
-        if (mounted) {
-          setLoading(false);
-        }
+        const fields = getStandardProfileFields(settings);
+        const completeness = calculateProfileCompleteness(fields);
+        setProfileCompleteness(completeness);
+      } else {
+        setProfileCompleteness(0);
+      }
+    } catch (err) {
+      const error =
+        err instanceof Error ? err : new Error("An unknown error occurred");
+      setCompletenessError(error);
+      console.error("Error during user data loading:", error);
+    } finally {
+      setIsCompletenessLoading(false);
+    }
+  };
 
-        // Cleanup the subscription
-        return () => {
-          subscription.unsubscribe();
-        };
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (mounted) {
-          setLoading(false);
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    // Initialize immediately with cached session if available
+    const initFromCache = () => {
+      try {
+        // Check if we have session in sessionStorage (for hot reloads)
+        const cachedSessionStr = sessionStorage.getItem(
+          "supabase_auth_session"
+        );
+        if (cachedSessionStr) {
+          try {
+            const cachedSession = JSON.parse(cachedSessionStr);
+            if (cachedSession && cachedSession?.user) {
+              setSession(cachedSession);
+              setUser(cachedSession?.user);
+
+              // Load cached settings if available
+              const cachedSettingsJson = sessionStorage.getItem(
+                getUserSettingsKey(cachedSession?.user?.id)
+              );
+              if (cachedSettingsJson) {
+                const cachedSettings = JSON.parse(cachedSettingsJson);
+                const fields = getStandardProfileFields(cachedSettings);
+                const completeness = calculateProfileCompleteness(fields);
+                setProfileCompleteness(completeness);
+                setIsCompletenessLoading(false);
+              }
+
+              // We'll still verify with Supabase in the background
+              setLoading(false);
+            }
+          } catch (e) {
+            console.error("Error parsing cached session:", e);
+          }
         }
+      } catch (e) {
+        console.error("Error accessing sessionStorage:", e);
       }
     };
 
-    initializeAuth();
-    
+    // Try to initialize from cache first (for hot reloads)
+    initFromCache();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      // If we have a user and the session is just being refreshed,
+      // we don't need to reload all user settings.
+      if (
+        user &&
+        session &&
+        (event === "TOKEN_REFRESHED" || event === "USER_UPDATED")
+      ) {
+        setSession(session); // Update session but that's it
+        return;
+      }
+
+      setSession(session);
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+
+      // Cache the session for hot reloads
+      if (session) {
+        try {
+          sessionStorage.setItem(
+            "supabase_auth_session",
+            JSON.stringify(session)
+          );
+        } catch (e) {
+          console.error("Error caching session:", e);
+        }
+      } else {
+        sessionStorage.removeItem("supabase_auth_session");
+      }
+
+      if (sessionUser && session) {
+        await loadUserAndSettings(sessionUser, session.access_token);
+      } else {
+        setProfileCompleteness(0);
+        setIsCompletenessLoading(false);
+      }
+
+      setLoading(false);
+    });
+
     return () => {
-      mounted = false;
+      isMounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
-  // Social sign-in handler
   const signIn = async (provider: AuthProvider) => {
     try {
       await supabase.auth.signInWithOAuth({
@@ -161,43 +258,93 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
         },
       });
     } catch (error) {
-      console.error('Error during sign in:', error);
+      console.error("Error during sign in:", error);
     }
   };
 
-  // Sign out handler
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (!error) {
-        router.push('/');
+        setUser(null);
+        setSession(null);
+        setProfileCompleteness(0);
+
+        // Clear cached data
+        if (session?.user) {
+          sessionStorage.removeItem(getUserSettingsKey(session.user.id));
+        }
+        sessionStorage.removeItem("supabase_auth_session");
+
+        router.push("/");
+        setTimeout(() => window.location.reload(), 100);
       } else {
-        console.error('Error signing out:', error);
+        console.error("Error signing out:", error);
       }
     } catch (error) {
-      console.error('Unexpected error during sign out:', error);
+      console.error("Unexpected error during sign out:", error);
+    }
+  };
+
+  const forceUserSync = async () => {
+    if (session?.user) {
+      localStorage.removeItem(getUserSyncKey(session.user.id));
+      sessionStorage.removeItem(getUserSettingsKey(session.user.id));
+      await loadUserAndSettings(session.user, session.access_token);
+    }
+  };
+
+  const refreshUserSettings = async (): Promise<void> => {
+    if (!session?.user) {
+      return;
+    }
+
+    setIsCompletenessLoading(true);
+    try {
+      // Always fetch fresh data from the server
+      const settings = await fetchUserSettings(session.user.id);
+      if (settings) {
+        // Update the cache
+        sessionStorage.setItem(
+          getUserSettingsKey(session.user.id),
+          JSON.stringify(settings)
+        );
+
+        // Update the profile completeness
+        const fields = getStandardProfileFields(settings);
+        const completeness = calculateProfileCompleteness(fields);
+        setProfileCompleteness(completeness);
+      }
+    } catch (err) {
+      console.error("Error refreshing user settings:", err);
+    } finally {
+      setIsCompletenessLoading(false);
     }
   };
 
   const value = {
     session,
     user,
+    loading,
+    profileCompleteness,
+    isCompletenessLoading,
+    completenessError,
+    authError,
     signIn,
     signOut,
-    loading,
+    forceUserSync,
+    refreshUserSettings,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-/**
- * Custom hook to use the auth context
- * @throws Error if used outside of a SupabaseAuthProvider
- */
 export const useSupabaseAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useSupabaseAuth must be used within a SupabaseAuthProvider');
+    throw new Error(
+      "useSupabaseAuth must be used within a SupabaseAuthProvider"
+    );
   }
   return context;
-}; 
+};

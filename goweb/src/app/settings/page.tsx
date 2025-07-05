@@ -55,7 +55,7 @@ export interface UserSettingsDto {
 }
 
 const SettingsPage: React.FC = () => {
-  const { user } = useSupabaseAuth();
+  const { user, refreshUserSettings } = useSupabaseAuth();
   const userId = user?.id;
   const [settings, setSettings] = useState<UserSettingsDto | null>(null);
   const [originalSettings, setOriginalSettings] =
@@ -64,6 +64,9 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (!userId) return;
+
+    // First refresh the user settings in the auth context to ensure we have the latest data
+    refreshUserSettings().catch(console.error);
 
     const loadSettings = async () => {
       try {
@@ -121,6 +124,11 @@ const SettingsPage: React.FC = () => {
     }
     try {
       await updateUserSettings(userId, settings);
+      setOriginalSettings(settings); // Update the original settings to match current
+
+      // Refresh the user settings in the auth context to ensure it has the latest data
+      await refreshUserSettings();
+
       setUpdateMessage("Settings updated successfully!");
       toast.success("Settings updated successfully!");
     } catch (err) {
