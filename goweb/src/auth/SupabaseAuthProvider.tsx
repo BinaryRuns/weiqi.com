@@ -168,13 +168,13 @@ export const SupabaseAuthProvider = ({
         if (cachedSessionStr) {
           try {
             const cachedSession = JSON.parse(cachedSessionStr);
-            if (cachedSession && cachedSession.user) {
+            if (cachedSession && cachedSession?.user) {
               setSession(cachedSession);
-              setUser(cachedSession.user);
+              setUser(cachedSession?.user);
 
               // Load cached settings if available
               const cachedSettingsJson = sessionStorage.getItem(
-                getUserSettingsKey(cachedSession.user.id)
+                getUserSettingsKey(cachedSession?.user?.id)
               );
               if (cachedSettingsJson) {
                 const cachedSettings = JSON.parse(cachedSettingsJson);
