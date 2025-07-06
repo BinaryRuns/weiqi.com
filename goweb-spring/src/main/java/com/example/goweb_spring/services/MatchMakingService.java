@@ -45,6 +45,29 @@ public class MatchMakingService {
     public void removePlayer(MatchmakingEntry entry) {
         matchmakingRepository.remove(entry);
         System.out.println("Removing " + entry);
+        
+        // Check if the queue is now empty and remove it from active queues if it is
+        String queueKey = "matchmakingQueue:" + entry.getTimeControl().name() + ":" + entry.getBoardSize().name();
+        checkAndCleanupQueue(queueKey);
+    }
+    
+    /**
+     * Checks if a queue is empty and removes it from the active queues set if it is
+     * @param queueKey The key of the queue to check
+     */
+    private void checkAndCleanupQueue(String queueKey) {
+        String[] parts = queueKey.split(":");
+        if (parts.length != 3) return;
+        
+        Set<ZSetOperations.TypedTuple<String>> queueContents = matchmakingRepository.rangeByScore(
+                parts[1], // timeControl
+                parts[2], // boardSize
+                0, Double.MAX_VALUE);
+                
+        if (queueContents == null || queueContents.isEmpty()) {
+            matchmakingRepository.removeActiveQueue(queueKey);
+            System.out.println("Removed empty queue from active queues: " + queueKey);
+        }
     }
     
     public void removePlayerById(String playerId) {
