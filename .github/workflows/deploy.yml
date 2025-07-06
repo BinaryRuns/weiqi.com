@@ -92,27 +92,22 @@ jobs:
           PERSONAL_REPO_TOKEN: ${{ secrets.PERSONAL_REPO_TOKEN }}
           PERSONAL_REPO_URL: ${{ secrets.PERSONAL_REPO_URL }}
         run: |
-          # Debug info
-          echo "Repository URL: https://[TOKEN]@${PERSONAL_REPO_URL}"
-          echo "URL format check: [${PERSONAL_REPO_URL}] - should not have spaces around it"
-          echo "Testing connection to verify token works..."
-          
-          # Test connection first
-          git ls-remote https://${PERSONAL_REPO_TOKEN}@${PERSONAL_REPO_URL} || echo "Connection test failed!"
+          # Hardcode the repository URL directly
+          echo "Using hardcoded repository URL..."
           
           # Cleanup any existing remote
           git remote remove personal 2>/dev/null || true
           
-          # Add the personal repository as a remote
-          echo "Adding remote..."
-          git remote add personal https://${PERSONAL_REPO_TOKEN}@${PERSONAL_REPO_URL}
+          # Add the personal repository as a remote with hardcoded URL
+          echo "Adding remote with hardcoded URL..."
+          git remote add personal https://${PERSONAL_REPO_TOKEN}@github.com/Lstsk/weiqi-frontend.git
           
           # Check if remote was added successfully
           echo "Remote URLs:"
           git remote -v
           
           # Push with verbosity
-          echo "Pushing with verbose output..."
-          GIT_TRACE=1 git push personal HEAD:main -f
+          echo "Pushing with verbosity..."
+          git push personal HEAD:main -f
           
           echo "Pushed to personal repository. Vercel deployment should be triggered automatically."
