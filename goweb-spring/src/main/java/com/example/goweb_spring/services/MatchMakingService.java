@@ -5,6 +5,8 @@ import com.example.goweb_spring.model.GameRoom;
 import com.example.goweb_spring.model.MatchmakingEntry;
 import com.example.goweb_spring.repositories.MatchmakingRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +24,7 @@ public class MatchMakingService {
     private final ObjectMapper objectMapper;
     private final GameRoomService gameRoomService;
     private final SimpMessagingTemplate simpMessagingTemplate;
+    private static final Logger logger = LoggerFactory.getLogger(MatchMakingService.class);
 
 
     public MatchMakingService(MatchmakingRepository matchmakingRepository, ObjectMapper objectMapper,
@@ -45,6 +48,37 @@ public class MatchMakingService {
     public void removePlayer(MatchmakingEntry entry) {
         matchmakingRepository.remove(entry);
         System.out.println("Removing " + entry);
+        
+        // Check if the queue is now empty and remove it from active queues if it is
+        String queueKey = "matchmakingQueue:" + entry.getTimeControl().name() + ":" + entry.getBoardSize().name();
+        checkAndCleanupQueue(queueKey);
+    }
+    
+    /**
+     * Checks if a queue is empty and removes it from the active queues set if it is
+     * @param queueKey The key of the queue to check
+     */
+    private void checkAndCleanupQueue(String queueKey) {
+        String[] parts = queueKey.split(":");
+        if (parts.length != 3) return;
+        
+        try {
+            Set<ZSetOperations.TypedTuple<String>> queueContents = matchmakingRepository.rangeByScore(
+                    parts[1], // timeControl
+                    parts[2], // boardSize
+                    0, Double.MAX_VALUE);
+                    
+            if (queueContents == null || queueContents.isEmpty()) {
+                try {
+                    matchmakingRepository.removeActiveQueue(queueKey);
+                    logger.info("Removed empty queue from active queues: {}", queueKey);
+                } catch (Exception e) {
+                    logger.error("Error removing active queue: {}", queueKey, e);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error checking queue contents for cleanup: {}", queueKey, e);
+        }
     }
     
     public void removePlayerById(String playerId) {

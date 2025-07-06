@@ -296,6 +296,8 @@ The `.gitignore` file is configured to allow `.env.enc` files while ignoring une
 
 ### Running the Application
 
+Locally, we use docker containers for easy spin up, have two different environment setup. Locally we use the weiqi-dev supabase for auth, and in prod we use weiqi-prod.
+
 Start all services using Docker Compose:
 
 ```bash
