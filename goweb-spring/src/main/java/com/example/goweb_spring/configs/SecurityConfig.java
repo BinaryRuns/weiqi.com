@@ -43,16 +43,25 @@ public class SecurityConfig {
     
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://weiqi-frontend.vercel.app"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization", 
-                                                   "Access-Control-Request-Method", "Access-Control-Request-Headers"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
-        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+
+        // More permissive CORS config for webhooks to allow requests from Supabase
+        CorsConfiguration webhookConfig = new CorsConfiguration();
+        webhookConfig.setAllowedOrigins(List.of("*"));
+        webhookConfig.setAllowedMethods(List.of("POST", "OPTIONS"));
+        webhookConfig.setAllowedHeaders(List.of("Content-Type", "Accept", "Origin", "X-Requested-With"));
+        source.registerCorsConfiguration("/api/webhooks/**", webhookConfig);
+        
+        // Stricter CORS config for the frontend app
+        CorsConfiguration appConfig = new CorsConfiguration();
+        appConfig.setAllowedOrigins(List.of("http://localhost:3000", "https://weiqi-frontend.vercel.app"));
+        appConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        appConfig.setAllowedHeaders(Arrays.asList("Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization", 
+                                                   "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+        appConfig.setAllowCredentials(true);
+        appConfig.setMaxAge(3600L);
+        source.registerCorsConfiguration("/**", appConfig);
+
         return source;
     }
 
@@ -67,6 +76,7 @@ public class SecurityConfig {
                 // Public endpoints that don't require authentication
                 auth.requestMatchers("/ws/**").permitAll()  // Websocket endpoints are handcled by the user interceptor
                     .requestMatchers("/api/hello/**").permitAll()
+                    .requestMatchers("/api/webhooks/**").permitAll()  // Webhook endpoints should be public
                     // OPTIONS requests for CORS pre-flight
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     

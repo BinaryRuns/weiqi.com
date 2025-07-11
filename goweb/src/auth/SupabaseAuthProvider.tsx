@@ -69,35 +69,9 @@ export const SupabaseAuthProvider = ({
   );
   const router = useRouter();
 
-  const syncUserWithBackend = async (
-    currentUser: User,
-    token: string
-  ): Promise<void> => {
-    // We only need to sync the user if they haven't been synced before.
-    if (!localStorage.getItem(getUserSyncKey(currentUser.id))) {
-      const syncResponse = await fetch("/api/auth/create-user", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: currentUser.email,
-          username:
-            currentUser.user_metadata?.username ||
-            currentUser.user_metadata?.full_name ||
-            `user_${currentUser.id.substring(0, 8)}`,
-          avatarUrl: currentUser.user_metadata?.avatar_url,
-          skillLevel: currentUser.user_metadata?.skill_level || "beginner",
-        }),
-      });
-
-      if (!syncResponse.ok && syncResponse.status !== 409) {
-        throw new Error("Failed to sync user with backend.");
-      }
-      localStorage.setItem(getUserSyncKey(currentUser.id), "true");
-    }
-  };
+  // The syncUserWithBackend function has been removed.
+  // User creation is now handled automatically by the Supabase webhook system.
+  // This comment is kept for reference during the transition period.
 
   const loadUserAndSettings = async (
     currentUser: User,
@@ -119,8 +93,7 @@ export const SupabaseAuthProvider = ({
           setProfileCompleteness(completeness);
           setIsCompletenessLoading(false);
 
-          // Continue with sync in background
-          syncUserWithBackend(currentUser, token).catch(console.error);
+          // User sync is now handled automatically by webhooks
           return;
         } catch (e) {
           console.error("Error parsing cached settings:", e);
@@ -128,8 +101,8 @@ export const SupabaseAuthProvider = ({
         }
       }
 
-      await syncUserWithBackend(currentUser, token);
-
+      // User sync is now handled automatically by webhooks
+      
       const settings = await fetchUserSettings();
       if (settings) {
         // Cache the settings for future hot reloads
@@ -288,9 +261,10 @@ export const SupabaseAuthProvider = ({
 
   const forceUserSync = async () => {
     if (session?.user) {
-      localStorage.removeItem(getUserSyncKey(session.user.id));
+      // We no longer need to force sync with the backend as it's handled by webhooks
+      // Just refresh the user settings from the backend
       sessionStorage.removeItem(getUserSettingsKey(session.user.id));
-      await loadUserAndSettings(session.user, session.access_token);
+      await refreshUserSettings();
     }
   };
 

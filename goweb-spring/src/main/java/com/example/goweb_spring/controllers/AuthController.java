@@ -3,6 +3,7 @@ package com.example.goweb_spring.controllers;
 import com.example.goweb_spring.annotations.RequiresAuthentication;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.repositories.UserRepository;
+import com.example.goweb_spring.services.UserService;
 import com.example.goweb_spring.utils.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +26,12 @@ public class AuthController {
     
     private final UserRepository userRepository;
     private final SecurityUtils securityUtils;
+    private final UserService userService;
     
-    public AuthController(UserRepository userRepository, SecurityUtils securityUtils) {
+    public AuthController(UserRepository userRepository, SecurityUtils securityUtils, UserService userService) {
         this.userRepository = userRepository;
         this.securityUtils = securityUtils;
+        this.userService = userService;
     }
 
     @GetMapping("/verify")
@@ -62,14 +65,17 @@ public class AuthController {
                 .body(Map.of("authenticated", false, "message", "Not authenticated"));
     }
     
+
     /**
      * Creates a new user in the database based on Supabase authentication data.
-     * This endpoint should be called only once when a user first authenticates.
+     * This endpoint is deprecated and will be removed in a future version.
+     * User creation is now handled automatically by the webhook system.
      */
     @PostMapping("/create-user")
     @RequiresAuthentication
+    @Deprecated
     public ResponseEntity<?> createUser(@RequestBody Map<String, Object> userData) {
-        logger.info("Create user endpoint called");
+        logger.info("Create user endpoint called (DEPRECATED)");
         String supabaseUserId = securityUtils.requireUserId();
         
         // Check if user already exists
@@ -85,61 +91,22 @@ public class AuthController {
                     ));
         }
         
-        String email = (String) userData.get("email");
-        String username = (String) userData.get("username");
-        String avatarUrl = (String) userData.get("avatarUrl");
-        String skillLevel = (String) userData.getOrDefault("skillLevel", "beginner");
+        // Delegate to the UserService
+        UserEntity createdUser = userService.createUserFromRequest(userData, supabaseUserId);
         
-        // Validate required fields
-        if (email == null || email.isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", "Email is required"));
+        if (createdUser == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("success", false, "message", "Failed to create user"));
         }
         
-        // Check for email conflicts
-        Optional<UserEntity> existingUserByEmail = userRepository.findByEmail(email);
-        if (existingUserByEmail.isPresent()) {
-            logger.warn("User with email {} already exists with different Supabase ID: {} vs {}", 
-                email, existingUserByEmail.get().getSupabaseUserId(), supabaseUserId);
-            
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of(
-                    "success", false,
-                    "message", "User with this email already exists",
-                    "existingUserId", existingUserByEmail.get().getSupabaseUserId()
-                ));
-        }
-        
-        // Generate a unique username
-        String finalUsername = generateUniqueUsername(username, supabaseUserId);
-        
-        // Create new user entity
-        UserEntity newUser = new UserEntity();
-        newUser.setSupabaseUserId(supabaseUserId);
-        newUser.setEmail(email);
-        newUser.setUsername(finalUsername);
-        newUser.setAvatarUrl(avatarUrl);
-        newUser.setSkillLevel(skillLevel != null ? skillLevel : "beginner");
-        
-        try {
-            userRepository.save(newUser);
-            logger.info("User successfully created: {}", newUser.getUsername());
-            
-            return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                    "success", true,
-                    "userId", supabaseUserId,
-                    "username", newUser.getUsername(),
-                    "isNewUser", true
-                ));
-        } catch (Exception e) {
-            logger.error("Error creating user: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "success", false,
-                    "message", "Error creating user: " + e.getMessage()
-                ));
-        }
+        logger.info("User successfully created: {}", createdUser.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(Map.of(
+                "success", true,
+                "userId", supabaseUserId,
+                "username", createdUser.getUsername(),
+                "isNewUser", true
+            ));
     }
     
     /**
@@ -218,10 +185,16 @@ public class AuthController {
      * Legacy endpoint for backward compatibility.
      * Determines whether to create or update a user based on existence.
      */
+    /**
+     * Legacy endpoint for backward compatibility.
+     * This endpoint is deprecated and will be removed in a future version.
+     * User creation is now handled automatically by the webhook system.
+     */
     @PostMapping("/sync-user")
     @RequiresAuthentication
+    @Deprecated
     public ResponseEntity<?> syncUserData(@RequestBody Map<String, Object> userData) {
-        logger.info("Sync user endpoint called (legacy)");
+        logger.info("Sync user endpoint called (DEPRECATED)");
         String supabaseUserId = securityUtils.requireUserId();
         
         // Check if user exists to determine whether to create or update
@@ -271,34 +244,11 @@ public class AuthController {
     }
     
     /**
-     * Generates a unique username based on the provided username or Supabase ID.
-     * Handles conflicts by adding random numbers if needed.
+     * @deprecated This method is deprecated and will be removed in a future version.
+     * Username generation is now handled by the UserService.
      */
+    @Deprecated
     private String generateUniqueUsername(String baseUsername, String supabaseUserId) {
-        // Start with the provided username or generate from Supabase ID
-        String username = (baseUsername != null && !baseUsername.isEmpty())
-                ? baseUsername
-                : "player_" + supabaseUserId.substring(0, 8);
-        
-        // Check if the username is already taken
-        if (!userRepository.findByUsername(username).isPresent()) {
-            return username;
-        }
-        
-        // Try with Supabase ID suffix
-        String usernameWithId = username + "_" + supabaseUserId.substring(0, 6);
-        if (!userRepository.findByUsername(usernameWithId).isPresent()) {
-            return usernameWithId;
-        }
-        
-        // If still not unique, add random numbers until we find a unique username
-        Random random = new Random();
-        String uniqueUsername;
-        do {
-            int randomNum = random.nextInt(10000);
-            uniqueUsername = username + "_" + randomNum;
-        } while (userRepository.findByUsername(uniqueUsername).isPresent());
-        
-        return uniqueUsername;
+        return userService.generateUniqueUsername(baseUsername, supabaseUserId);
     }
 }
