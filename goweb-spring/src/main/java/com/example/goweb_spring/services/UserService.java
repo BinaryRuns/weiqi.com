@@ -3,6 +3,7 @@ package com.example.goweb_spring.services;
 import com.example.goweb_spring.dto.webhook.supabase.SupabaseInsertPayload.UserRecord;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.entities.UserSettingsEntity;
+import com.example.goweb_spring.exceptions.ValidationException;
 import com.example.goweb_spring.repositories.UserRepository;
 import com.example.goweb_spring.services.UserSettingsService;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 /**
  * Service for user-related operations.
@@ -23,6 +25,8 @@ import java.util.Optional;
 @Service
 public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+    private static final int MAX_USERNAME_SUFFIX_ATTEMPTS = 1000;
+    private static final Random RANDOM = new Random();
     
     private final UserRepository userRepository;
     private final UserSettingsService userSettingsService;
@@ -66,7 +70,8 @@ public class UserService {
      * 
      * @param userData The user data from the API request
      * @param supabaseUserId The authenticated Supabase user ID
-     * @return The created UserEntity or null if creation failed
+     * @return The created UserEntity
+     * @throws ValidationException if email is null or empty
      */
     public UserEntity createUserFromRequest(Map<String, Object> userData, String supabaseUserId) {
         String email = (String) userData.get("email");
@@ -77,7 +82,7 @@ public class UserService {
         // Validate required fields
         if (email == null || email.isEmpty()) {
             logger.error("Email is required for user creation");
-            return null;
+            throw new ValidationException("Email is required for user creation");
         }
         
         // Create the user using the consolidated method
@@ -191,6 +196,14 @@ public class UserService {
         return savedUser;
     }
 
+    /**
+     * Generates a unique username based on the provided base username or Supabase user ID.
+     * If the base username is taken, appends a numeric suffix to make it unique.
+     * 
+     * @param baseUsername The preferred username (can be null)
+     * @param supabaseUserId The Supabase user ID (used as fallback)
+     * @return A unique username
+     */
     public String generateUniqueUsername(String baseUsername, String supabaseUserId) {
         // If no username provided, use the first part of the Supabase ID
         String username = (baseUsername == null || baseUsername.isEmpty()) ? 
@@ -207,12 +220,30 @@ public class UserService {
             return username;
         }
         
-        // If not unique, append a random suffix
+        // If not unique, append a numeric suffix with an upper limit on attempts
         int suffix = 1;
         String newUsername;
+        int attempts = 0;
+        
         do {
             newUsername = username + suffix;
             suffix++;
+            attempts++;
+            
+            // If we've tried too many sequential suffixes, switch to a random number approach
+            if (attempts >= MAX_USERNAME_SUFFIX_ATTEMPTS) {
+                logger.warn("Exceeded maximum sequential suffix attempts for username: {}", username);
+                // Generate a random number between 1000 and 9999
+                int randomSuffix = 1000 + RANDOM.nextInt(9000);
+                newUsername = username + randomSuffix;
+                
+                // If still not unique, use the Supabase ID as a last resort
+                if (userRepository.findByUsername(newUsername).isPresent()) {
+                    newUsername = "user_" + supabaseUserId.substring(0, 12);
+                    logger.info("Using Supabase ID-based username as fallback: {}", newUsername);
+                }
+                break;
+            }
         } while (userRepository.findByUsername(newUsername).isPresent());
         
         return newUsername;

@@ -48,12 +48,6 @@ public class WebhookUtils {
             throw new WebhookVerificationException("Missing required webhook data");
         }
         
-        // Clean secret if it still has prefix
-        if (secret.startsWith("v1,whsec_")) {
-            secret = secret.replace("v1,whsec_", "");
-            logger.info("Stripped prefix from webhook secret");
-        }
-        
         try {
             // The signature header should be in format "v1,<signature>"
             String[] parts = signatureHeader.split(",");

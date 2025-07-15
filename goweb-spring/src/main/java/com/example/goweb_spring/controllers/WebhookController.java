@@ -31,15 +31,18 @@ public class WebhookController {
     private final WebhookUtils webhookUtils;
     private final ObjectMapper objectMapper;
     private final UserService userService;
-    
-    @Value("${SUPABASE_BEFORE_USER_CREATED_SECRET}")
-    private String supabaseSecret;
+    private final String supabaseSecret;
     
     @Autowired
-    public WebhookController(WebhookUtils webhookUtils, ObjectMapper objectMapper, UserService userService) {
+    public WebhookController(
+            WebhookUtils webhookUtils, 
+            ObjectMapper objectMapper, 
+            UserService userService,
+            @Value("${SUPABASE_BEFORE_USER_CREATED_SECRET}") String supabaseSecret) {
         this.webhookUtils = webhookUtils;
         this.objectMapper = objectMapper;
         this.userService = userService;
+        this.supabaseSecret = supabaseSecret;
     }
     
     /**
@@ -72,15 +75,8 @@ public class WebhookController {
         try {
             // Verify the webhook signature
             try {
-                // Ensure the secret is properly formatted (without prefix)
-                String cleanSecret = supabaseSecret;
-                if (cleanSecret.startsWith("v1,whsec_")) {
-                    cleanSecret = cleanSecret.replace("v1,whsec_", "");
-                    logger.info("Stripped prefix from webhook secret");
-                }
-                
-                // Use the new verifyStandardWebhook method that takes the headers map
-                webhookUtils.verifyStandardWebhook(payload, headers, cleanSecret);
+                // Use the verifyStandardWebhook method that takes the headers map
+                webhookUtils.verifyStandardWebhook(payload, headers, supabaseSecret);
             } catch (WebhookUtils.WebhookVerificationException e) {
                 logger.error("Webhook verification failed", e);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -117,9 +113,12 @@ public class WebhookController {
             return ResponseEntity.ok(Map.of());
             
         } catch (Exception e) {
-            logger.error("Error processing webhook", e);
+            // Log the detailed error with stack trace internally
+            logger.error("Error processing webhook: {}", e.getMessage(), e);
+            
+            // Return a generic error message to the client
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of("error", "An internal server error occurred while processing the webhook"));
         }
     }
 }
