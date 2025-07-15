@@ -1,8 +1,3 @@
----
-description: Standard when dealing with environments
-globs: 
-alwaysApply: false
----
 # Environment Variables Management
 
 This project uses encrypted environment variables to manage configuration across environments.
@@ -33,7 +28,18 @@ Backend environment variables are configured in `application.properties`:
 ```
 supabase.jwt.secret=${SUPABASE_JWT_SECRET}
 supabase.url=${SUPABASE_URL}
+supabase.before-user-created.secret=${SUPABASE_BEFORE_USER_CREATED_SECRET}
 ```
+
+#### Webhook Secret Format
+
+**Important**: When setting the `SUPABASE_BEFORE_USER_CREATED_SECRET` environment variable, provide the webhook secret **WITHOUT** the `v1,whsec_` prefix.
+
+Example:
+- If Supabase provides: `v1,whsec_abcdef123456789`
+- Set the environment variable as: `SUPABASE_BEFORE_USER_CREATED_SECRET=abcdef123456789`
+
+For more details, see [goweb-spring/WEBHOOKS.md](mdc:goweb-spring/WEBHOOKS.md).
 
 ## Security
 

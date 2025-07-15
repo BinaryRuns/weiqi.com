@@ -105,6 +105,7 @@ public class SupabaseAuthenticationFilter extends OncePerRequestFilter {
     
     private boolean isPermittedPath(String path) {
         return path.startsWith("/ws") || 
-               path.startsWith("/api/hello");
+               path.startsWith("/api/hello") ||
+               path.startsWith("/api/webhooks");
     }
 } 
