@@ -1,6 +1,6 @@
 package com.example.goweb_spring.controllers;
 
-import com.example.goweb_spring.dto.webhook.supabase.BeforeUserCreatedPayload;
+import com.example.goweb_spring.dto.webhook.supabase.SupabaseInsertPayload;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.services.UserService;
 import com.example.goweb_spring.utils.WebhookUtils;
@@ -47,7 +47,7 @@ public class WebhookController {
      * This endpoint will be called by Supabase before a user is created.
      * 
      * @param payload The raw request body
-     * @param signatureHeader The signature header from Supabase
+     * @param headers The request headers including signature header from Supabase
      * @return 200 OK if the user creation is allowed, or an error response if not
      */
     @PostMapping("/supabase/before-user-created")
@@ -88,17 +88,20 @@ public class WebhookController {
             }
             
             // Parse the payload into our DTO
-            BeforeUserCreatedPayload webhookPayload = objectMapper.readValue(payload, BeforeUserCreatedPayload.class);
+            SupabaseInsertPayload webhookPayload = objectMapper.readValue(payload, SupabaseInsertPayload.class);
             
             // Log the user information
-            logger.info("User creation request for email: {}", webhookPayload.getUser().getEmail());
+            logger.info("User creation request for email: {}", webhookPayload.getRecord().getEmail());
+            
+            // Pass the user record directly to the UserService
+            SupabaseInsertPayload.UserRecord userRecord = webhookPayload.getRecord();
             
             // Create the user in our database
-            UserEntity createdUser = userService.createUserFromWebhook(webhookPayload.getUser());
+            UserEntity createdUser = userService.createUserFromWebhook(userRecord);
             
             if (createdUser == null) {
                 // If user creation failed, return an error to prevent Supabase from creating the user
-                logger.error("Failed to create user in database for email: {}", webhookPayload.getUser().getEmail());
+                logger.error("Failed to create user in database for email: {}", webhookPayload.getRecord().getEmail());
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of(
                             "error", Map.of(

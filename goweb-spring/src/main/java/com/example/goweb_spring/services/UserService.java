@@ -1,6 +1,6 @@
 package com.example.goweb_spring.services;
 
-import com.example.goweb_spring.dto.webhook.supabase.BeforeUserCreatedPayload.SupabaseUser;
+import com.example.goweb_spring.dto.webhook.supabase.SupabaseInsertPayload.UserRecord;
 import com.example.goweb_spring.entities.UserEntity;
 import com.example.goweb_spring.entities.UserSettingsEntity;
 import com.example.goweb_spring.repositories.UserRepository;
@@ -36,19 +36,19 @@ public class UserService {
      * Creates a user from the Supabase webhook payload, including default settings.
      * This method is transactional to ensure both user and settings are created together.
      * 
-     * @param supabaseUser The user data from the Supabase webhook
+     * @param userRecord The user data from the Supabase webhook
      * @return The created UserEntity or null if creation failed
      */
-        @Transactional
-    public UserEntity createUserFromWebhook(SupabaseUser supabaseUser) {
-        String supabaseUserId = supabaseUser.getId();
-        String email = supabaseUser.getEmail();
+    @Transactional
+    public UserEntity createUserFromWebhook(UserRecord userRecord) {
+        String supabaseUserId = userRecord.getId();
+        String email = userRecord.getEmail();
         String baseUsername = email.split("@")[0];
         
         // Extract avatar URL from user metadata if available
         String avatarUrl = null;
-        if (supabaseUser.getUserMetadata() != null && supabaseUser.getUserMetadata().containsKey("avatar_url")) {
-            avatarUrl = (String) supabaseUser.getUserMetadata().get("avatar_url");
+        if (userRecord.getRawUserMetaData() != null && userRecord.getRawUserMetaData().containsKey("avatar_url")) {
+            avatarUrl = (String) userRecord.getRawUserMetaData().get("avatar_url");
         }
         
         // Create the user using the consolidated method
