@@ -11,6 +11,7 @@ import {
   UserPlusIcon,
   SettingsIcon,
   LogOutIcon,
+  DoorOpenIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +25,7 @@ import { ProfileCompletenessIndicator } from "@/components/profile/ProfileComple
 
 const navItems = [
   { href: "/play", label: "Play", icon: GamepadIcon },
+  { href: "/rooms", label: "Rooms", icon: DoorOpenIcon },
   { href: "/puzzles", label: "Puzzles", icon: BrainCircuitIcon },
   { href: "/learn", label: "Learn", icon: GraduationCapIcon },
   { href: "/watch", label: "Watch", icon: PlaySquareIcon },

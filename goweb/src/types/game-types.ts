@@ -16,6 +16,7 @@ export interface GameState {
   whiteTime: number;
   timeControl: TimeControl;
   currentPlayerColor: string;
+  status: GameStatus;
 }
 
 export type StoneColor = "black" | "white" | null;
@@ -36,7 +37,10 @@ export interface GameStateResponse {
   whiteTime: number;
   timeControl: TimeControl;
   currentPlayerColor: string;
+  status: GameStatus;
 }
+
+export type GameStatus = "WAITING" | "IN_GAME" | "FINISHED";
 
 export interface TimeControl {
   type: "fischer" | "byoyomi" | "simple";

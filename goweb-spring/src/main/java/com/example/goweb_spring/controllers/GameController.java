@@ -94,4 +94,28 @@ public class GameController {
         gameRoomService.resign(resignMessage.getRoomId(), resignMessage.getUserId());
     }
 
+    /**
+     * Handles a player passing their turn
+     */
+    @MessageMapping("/game.pass")
+    public void handlePass(@Payload JoinRoomMessage passMessage) {
+        try {
+            gameRoomService.passTurn(passMessage.getRoomId(), passMessage.getUserId());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Handles a player offering a draw
+     */
+    @MessageMapping("/game.draw")
+    public void handleDrawOffer(@Payload JoinRoomMessage drawMessage) {
+        try {
+            gameRoomService.offerDraw(drawMessage.getRoomId(), drawMessage.getUserId());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 }
