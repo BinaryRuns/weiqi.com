@@ -2,6 +2,7 @@ package com.example.goweb_spring.dto;
 
 import com.example.goweb_spring.dto.enums.TimeControl;
 import com.example.goweb_spring.model.Player;
+import com.example.goweb_spring.model.RoomStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -22,4 +23,5 @@ public class GameRoomResponse {
     private int whiteTime;
     private TimeControl timeControl;
     private String currentPlayerColor;
+    private RoomStatus status; // Add status field
 }

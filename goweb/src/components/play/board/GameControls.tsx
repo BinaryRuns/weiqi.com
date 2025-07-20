@@ -5,12 +5,25 @@ const GameControls = ({
   handleDraw,
   handleResign,
   handleRematch,
+  handlePass,
+  isSpectator = false,
 }: {
   gameOver: boolean;
   handleDraw: () => void;
   handleResign: () => void;
   handleRematch: () => void;
+  handlePass: () => void;
+  isSpectator?: boolean;
 }) => {
+  // If user is a spectator, don't show game controls
+  if (isSpectator) {
+    return (
+      <div className="mt-4 text-center text-sm text-muted-foreground">
+        <p>You are spectating this game</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 flex flex-col items-center space-y-4">
       {gameOver ? (
@@ -46,6 +59,12 @@ const GameControls = ({
             onClick={handleDraw}
           >
             Offer Draw
+          </Button>
+          <Button
+            className="w-full bg-transparent border border-gray-500 text-gray-300 hover:bg-gray-600 hover:text-white font-semibold py-2 rounded-lg transition-all duration-300"
+            onClick={handlePass}
+          >
+            Pass
           </Button>
         </>
       )}

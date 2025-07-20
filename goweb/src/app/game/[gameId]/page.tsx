@@ -68,22 +68,10 @@ export default function GamePage() {
           console.log(`${data.userId} joined the game.`);
         } else if (data.action === "LEAVE") {
           console.log(`${data.userId} left the game.`);
+        } else if (data.action === "GAME_OVER") {
+          setGameState(data.gameRoom);
+          setGameOver(true);
         }
-      }
-    );
-
-    const gameTimer = subscribe<GameTimer>(
-      `/topic/game/${params.gameId}/timer`,
-      (data) => {
-        // Update blackTime/whiteTime in our local game state
-        setGameState((prevState) => {
-          if (!prevState) return prevState;
-          return {
-            ...prevState,
-            blackTime: data.blackTime,
-            whiteTime: data.whiteTime,
-          };
-        });
       }
     );
 
@@ -107,11 +95,11 @@ export default function GamePage() {
     );
 
     // Subscribe to errors
-    const errorSubscription = subscribe(`/user/queue/errors`, (msg) => {
+    const errorSubscription = subscribe<{errorCode: string, errorMessage: string}>(`/user/queue/errors`, (msg) => {
       console.log("Error: ", msg);
       toast({
         title: "Error",
-        description: msg.errorMessage as string,
+        description: msg.errorMessage,
         variant: "destructive",
         duration: 1000,
       });
@@ -128,6 +116,32 @@ export default function GamePage() {
       }
     );
 
+    // Subscribe to pass notifications
+    const passSubscription = subscribe<{ player: string, color: string, result?: string }>(
+      `/topic/game/${params.gameId}/pass`,
+      (data) => {
+        if (data.result === "two_passes") {
+          setResignMessage(`Game ended by agreement after two consecutive passes.`);
+          setGameOver(true);
+        } else {
+          toast({
+            title: "Pass",
+            description: `${data.player} (${data.color}) passed their turn.`,
+            duration: 3000,
+          });
+        }
+      }
+    );
+
+    // Subscribe to draw notifications
+    const drawSubscription = subscribe<{ player: string, result: string }>(
+      `/topic/game/${params.gameId}/draw`,
+      (data) => {
+        setResignMessage(`Game ended in a draw by agreement.`);
+        setGameOver(true);
+      }
+    );
+
     const chatSubscription = subscribe<ChatMessage>(
       `/topic/game/${params.gameId}/chat`,
       (message) => {
@@ -140,12 +154,12 @@ export default function GamePage() {
 
     return () => {
       gameSubscription?.unsubscribe();
-      // errorSubscription?.unsubscribe();
-      gameTimer?.unsubscribe();
       chatSubscription?.unsubscribe();
       soundSubscription?.unsubscribe();
-      resignSubscription?.unsubscribe();
       timeoutSubscription?.unsubscribe();
+      resignSubscription?.unsubscribe();
+      passSubscription?.unsubscribe();
+      drawSubscription?.unsubscribe();
       errorSubscription?.unsubscribe();
     };
   }, [isConnected, params.gameId, userId, toast, userName, subscribe, send]);
@@ -190,15 +204,41 @@ export default function GamePage() {
     send("/app/game.resign", { roomId: params.gameId, userId });
   };
 
-  const handleDraw = () => {};
+  const handlePass = () => {
+    if (!isConnected || !userId || gameOver) return;
+    
+    send("/app/game.pass", { roomId: params.gameId, userId });
+  };
+
+  const handleDraw = () => {
+    if (!isConnected || !userId || gameOver) return;
+    
+    send("/app/game.draw", { roomId: params.gameId, userId });
+  };
 
   // ----- Player Roles -----
   const currentUser = Array.from(gameState?.players || []).find(
     (player) => player.userId === userId
   );
-  const opponent = Array.from(gameState?.players || []).find(
-    (player) => player.userId !== userId
+  
+  // Check if the current user is a player or spectator
+  const isSpectator = currentUser === undefined;
+  
+  // For spectators, we want to show black at top, white at bottom
+  // For players, we want to show opponent at top, current player at bottom
+  const blackPlayer = Array.from(gameState?.players || []).find(
+    (player) => player.color === "black"
   );
+  
+  const whitePlayer = Array.from(gameState?.players || []).find(
+    (player) => player.color === "white"
+  );
+  
+  // Determine which players to show at top and bottom
+  const topPlayer = isSpectator ? blackPlayer : 
+    Array.from(gameState?.players || []).find((player) => player.userId !== userId);
+    
+  const bottomPlayer = isSpectator ? whitePlayer : currentUser;
 
   // ----- Rendering -----
   if (loading) {
@@ -218,15 +258,17 @@ export default function GamePage() {
           <div className="flex flex-row justify-between">
             <PlayerCard
               position="top"
-              username={opponent?.userName || "Opponent"}
+              username={topPlayer?.userName || "Opponent"}
             />
             <Timer
               currentTime={
-                opponent?.color === "black"
+                topPlayer?.color === "black"
                   ? gameState.blackTime
                   : gameState.whiteTime
               }
-              isActive={gameState.currentPlayerColor === opponent?.color}
+              isActive={gameState.currentPlayerColor === topPlayer?.color}
+              gameStatus={gameState.status}
+              increment={gameState.timeControl.increment}
             />
           </div>
 
@@ -250,8 +292,8 @@ export default function GamePage() {
                       } => stone !== null
                     ) || []
                 }
-                interactive={true}
-                onPlaceStone={(x, y) => handleStonePlacement(x, y)} // <-- Fix here
+                interactive={!isSpectator}
+                onPlaceStone={(x, y) => handleStonePlacement(x, y)}
                 inGame={true}
                 showCoordinates={true}
               />
@@ -261,15 +303,17 @@ export default function GamePage() {
           <div className="mt-2 flex flex-row justify-between">
             <PlayerCard
               position="bottom"
-              username={currentUser?.userName || "Player"}
+              username={bottomPlayer?.userName || "Player"}
             />
             <Timer
               currentTime={
-                currentUser?.color === "black"
+                bottomPlayer?.color === "black"
                   ? gameState.blackTime
                   : gameState.whiteTime
               }
-              isActive={gameState.currentPlayerColor === currentUser?.color}
+              isActive={gameState.currentPlayerColor === bottomPlayer?.color}
+              gameStatus={gameState.status}
+              increment={gameState.timeControl.increment}
             />
           </div>
         </div>
@@ -282,8 +326,10 @@ export default function GamePage() {
           <GameControls
             handleDraw={handleDraw}
             handleResign={handleResign}
+            handlePass={handlePass}
             handleRematch={() => {}}
             gameOver={gameOver}
+            isSpectator={isSpectator}
           />
 
           {resignMessage && (
